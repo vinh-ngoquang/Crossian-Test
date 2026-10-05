@@ -1,0 +1,6 @@
+{
+  "name": "StretchActive™ - Ultra-Stretch Ice Silk Comfort Pants",
+  "description": "Official StretchActive™ Ultra-Stretch Ice Silk Casual Pants. All-day comfort, 4-way stretch, COOLMAX® moisture-wicking technology & deep zippered pockets.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
