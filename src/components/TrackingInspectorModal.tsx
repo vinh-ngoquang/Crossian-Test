@@ -6,7 +6,9 @@ import {
   ArrowRight,
   BarChart3,
   CheckCircle2,
+  Code,
   Copy,
+  Database,
   Download,
   ExternalLink,
   Flame,
@@ -31,8 +33,80 @@ interface Props {
   onClose: () => void;
 }
 
+export interface FlattenedEventRow {
+  timestamp: string;
+  userId: string;
+  sessionId: string;
+  sessionNumber: number;
+  funnelStep: string;
+  eventName: string;
+  category: string;
+  itemName: string;
+  style: string;
+  color: string;
+  size: string;
+  inseam: string;
+  quantity: number | string;
+  unitPrice: number | string;
+  totalValue: number | string;
+  savings: number | string;
+  isMultiItem: string;
+  paymentMethod: string;
+  actionDetail: string;
+  platforms: string;
+}
+
+export function flattenRecord(e: TrackingEventRecord): FlattenedEventRow {
+  const p = e.payload || {};
+  const firstItem = Array.isArray(p.items) && p.items.length > 0 ? p.items[0] : null;
+
+  let funnelStep = 'Engagement';
+  if (e.eventName === 'page_view') funnelStep = '1. Landing';
+  else if (e.eventName === 'view_item' || e.eventName === 'customize_product') funnelStep = '2. Product Explore';
+  else if (e.eventName === 'add_to_cart' || e.eventName === 'upsell_click' || e.eventName === 'cart_quantity_change') funnelStep = '3. Cart Building';
+  else if (e.eventName === 'begin_checkout' || e.eventName === 'add_shipping_info' || e.eventName === 'add_payment_info') funnelStep = '4. Checkout';
+  else if (e.eventName === 'purchase') funnelStep = '5. Purchase';
+
+  const itemName = p.content_name || p.item_name || firstItem?.productTitle || firstItem?.item_name || 'StretchActive™ Ice Silk Pants';
+  const style = p.style || p.full_selection?.style || firstItem?.style || (p.item_variant?.includes('Jogger') ? 'Jogger' : p.item_variant?.includes('Straight') ? 'Straight' : '-');
+  const color = p.color || p.full_selection?.color?.name || firstItem?.color || '-';
+  const size = p.size || p.full_selection?.size || firstItem?.size || '-';
+  const inseam = p.inseam || p.full_selection?.inseam || firstItem?.inseam || '-';
+
+  const qty = p.quantity || p.num_items || firstItem?.quantity || (e.eventName === 'add_to_cart' || e.eventName === 'purchase' ? 1 : '-');
+  const unitPrice = p.price || firstItem?.price || firstItem?.unitPrice || (typeof p.value === 'number' && typeof qty === 'number' ? (p.value / qty).toFixed(2) : '-');
+  const totalValue = p.value !== undefined ? Number(p.value).toFixed(2) : '-';
+  const savings = p.savings_amount !== undefined ? Number(p.savings_amount).toFixed(2) : (typeof qty === 'number' && qty > 1 ? (74.04).toFixed(2) : '0.00');
+  const isMultiItem = typeof qty === 'number' ? (qty > 1 ? 'YES' : 'NO') : '-';
+  const paymentMethod = p.payment_type || p.payment_method || '-';
+  const actionDetail = p.action || p.offer_title || p.button_name || p.customization_value || p.page_title || '-';
+
+  return {
+    timestamp: e.timestamp,
+    userId: e.userId || tracker.getUserId(),
+    sessionId: e.sessionId || tracker.getSessionId(),
+    sessionNumber: p.session_number || 1,
+    funnelStep,
+    eventName: e.eventName,
+    category: e.category,
+    itemName,
+    style: String(style),
+    color: String(color),
+    size: String(size),
+    inseam: String(inseam),
+    quantity: qty,
+    unitPrice: typeof unitPrice === 'number' ? unitPrice.toFixed(2) : unitPrice,
+    totalValue,
+    savings,
+    isMultiItem,
+    paymentMethod: String(paymentMethod),
+    actionDetail: String(actionDetail),
+    platforms: e.platforms.join('+'),
+  };
+}
+
 export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => {
-  const [activeTab, setActiveTab] = useState<'events' | 'analytics' | 'config' | 'guide'>('analytics');
+  const [activeTab, setActiveTab] = useState<'events' | 'analytics' | 'analyst_sql' | 'config' | 'guide'>('analytics');
   const [eventViewMode, setEventViewMode] = useState<'table' | 'json'>('table');
   const [events, setEvents] = useState<TrackingEventRecord[]>([]);
   const [config, setConfig] = useState<PixelConfig>(tracker.getConfig());
@@ -41,24 +115,60 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
 
   const handleExportCsv = () => {
     if (events.length === 0) return;
-    const headers = ['Timestamp', 'User_ID', 'Session_ID', 'Event_Name', 'Category', 'Platforms', 'Value_USD', 'Quantity', 'Details_JSON'];
-    const rows = events.map((e) => [
-      `"${new Date(e.timestamp).toLocaleTimeString()}"`,
-      `"${e.userId || tracker.getUserId()}"`,
-      `"${e.sessionId || tracker.getSessionId()}"`,
-      `"${e.eventName}"`,
-      `"${e.category}"`,
-      `"${e.platforms.join('+')}"`,
-      e.payload.value || e.payload.price || 0,
-      e.payload.quantity || e.payload.num_items || 1,
-      `"${JSON.stringify(e.payload).replace(/"/g, '""')}"`,
-    ]);
+    const headers = [
+      'Timestamp',
+      'User_ID',
+      'Session_ID',
+      'Session_Number',
+      'Funnel_Step',
+      'Event_Name',
+      'Category',
+      'Item_Name',
+      'Style',
+      'Color',
+      'Size',
+      'Inseam',
+      'Quantity',
+      'Unit_Price_USD',
+      'Total_Value_USD',
+      'Savings_USD',
+      'Is_Multi_Item',
+      'Payment_Method',
+      'Action_Detail',
+      'Platforms',
+    ];
+
+    const rows = events.map((e) => {
+      const f = flattenRecord(e);
+      return [
+        `"${f.timestamp}"`,
+        `"${f.userId}"`,
+        `"${f.sessionId}"`,
+        f.sessionNumber,
+        `"${f.funnelStep}"`,
+        `"${f.eventName}"`,
+        `"${f.category}"`,
+        `"${f.itemName.replace(/"/g, '""')}"`,
+        `"${f.style}"`,
+        `"${f.color}"`,
+        `"${f.size}"`,
+        `"${f.inseam}"`,
+        f.quantity,
+        f.unitPrice,
+        f.totalValue,
+        f.savings,
+        `"${f.isMultiItem}"`,
+        `"${f.paymentMethod}"`,
+        `"${f.actionDetail.replace(/"/g, '""')}"`,
+        `"${f.platforms}"`,
+      ];
+    });
 
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `tracking_events_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `stretchactive_bi_events_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -235,10 +345,10 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
         </div>
 
         {/* Tabs */}
-        <div className="flex items-center gap-1 px-6 border-b border-stone-800 bg-stone-900/50">
+        <div className="flex items-center gap-1 px-6 border-b border-stone-800 bg-stone-900/50 overflow-x-auto">
           <button
             onClick={() => setActiveTab('analytics')}
-            className={`px-4 py-3 text-sm font-medium border-b-2 flex items-center gap-2 transition-colors ${
+            className={`px-4 py-3 text-sm font-medium border-b-2 flex items-center gap-2 transition-colors whitespace-nowrap ${
               activeTab === 'analytics'
                 ? 'border-emerald-500 text-emerald-400 font-semibold'
                 : 'border-transparent text-stone-400 hover:text-stone-200'
@@ -248,8 +358,19 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
             Phân tích CR & AOV (Growth Funnel)
           </button>
           <button
+            onClick={() => setActiveTab('analyst_sql')}
+            className={`px-4 py-3 text-sm font-medium border-b-2 flex items-center gap-2 transition-colors whitespace-nowrap ${
+              activeTab === 'analyst_sql'
+                ? 'border-emerald-500 text-emerald-400 font-semibold'
+                : 'border-transparent text-stone-400 hover:text-stone-200'
+            }`}
+          >
+            <Database className="w-4 h-4" />
+            Góc Data Analyst (SQL & Pipeline)
+          </button>
+          <button
             onClick={() => setActiveTab('events')}
-            className={`px-4 py-3 text-sm font-medium border-b-2 flex items-center gap-2 transition-colors ${
+            className={`px-4 py-3 text-sm font-medium border-b-2 flex items-center gap-2 transition-colors whitespace-nowrap ${
               activeTab === 'events'
                 ? 'border-emerald-500 text-emerald-400 font-semibold'
                 : 'border-transparent text-stone-400 hover:text-stone-200'
@@ -260,7 +381,7 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
           </button>
           <button
             onClick={() => setActiveTab('config')}
-            className={`px-4 py-3 text-sm font-medium border-b-2 flex items-center gap-2 transition-colors ${
+            className={`px-4 py-3 text-sm font-medium border-b-2 flex items-center gap-2 transition-colors whitespace-nowrap ${
               activeTab === 'config'
                 ? 'border-emerald-500 text-emerald-400 font-semibold'
                 : 'border-transparent text-stone-400 hover:text-stone-200'
@@ -271,7 +392,7 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
           </button>
           <button
             onClick={() => setActiveTab('guide')}
-            className={`px-4 py-3 text-sm font-medium border-b-2 flex items-center gap-2 transition-colors ${
+            className={`px-4 py-3 text-sm font-medium border-b-2 flex items-center gap-2 transition-colors whitespace-nowrap ${
               activeTab === 'guide'
                 ? 'border-emerald-500 text-emerald-400 font-semibold'
                 : 'border-transparent text-stone-400 hover:text-stone-200'
@@ -480,6 +601,205 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
             </div>
           )}
 
+          {/* TAB: GÓC DATA ANALYST (SQL, PYTHON & DATA PIPELINE) */}
+          {activeTab === 'analyst_sql' && (
+            <div className="h-full overflow-y-auto pr-2 space-y-6">
+              {/* Architecture Intro */}
+              <div className="bg-stone-950 p-5 rounded-2xl border border-stone-800 space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+                    <Database className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-base text-white">
+                      Kiến Trúc Dữ Liệu Phân Tích (Analytics & BI Pipeline)
+                    </h4>
+                    <p className="text-xs text-stone-400">
+                      Cách Data Analyst chuyển hóa Event Stream thành Dashboard đo lường CR & AOV
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-stone-900 rounded-xl border border-stone-800 text-xs text-stone-300 font-mono flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-emerald-400 font-bold">[1. Web Event Stream]</span>
+                  <span>&rarr;</span>
+                  <span className="text-amber-400 font-bold">[2. GTM / Webhook / GA4 BigQuery Export]</span>
+                  <span>&rarr;</span>
+                  <span className="text-cyan-400 font-bold">[3. SQL Data Mart / Flattened Table]</span>
+                  <span>&rarr;</span>
+                  <span className="text-rose-400 font-bold">[4. Looker Studio / Metabase BI Dashboard]</span>
+                </div>
+              </div>
+
+              {/* SQL Queries Section */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Code className="w-4 h-4 text-emerald-400" />
+                  3 Câu Lệnh SQL Chuẩn Mực Cho Data Analyst (BigQuery / Snowflake / PostgreSQL)
+                </h4>
+
+                {/* SQL Query 1: Funnel CR */}
+                <div className="bg-stone-950 rounded-xl border border-stone-800 overflow-hidden">
+                  <div className="p-3 bg-stone-900/60 border-b border-stone-800 flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-bold text-white font-mono">1. Phân Tích Drop-off Phễu Chuyển Đổi (Conversion Rate Funnel)</span>
+                      <p className="text-[11px] text-stone-400">Đo lường tỷ lệ rớt qua từng bước: PageView &rarr; Customize &rarr; Cart &rarr; Checkout &rarr; Purchase</p>
+                    </div>
+                    <button
+                      onClick={() =>
+                        handleCopy(
+                          `WITH funnel AS (
+  SELECT
+    session_id,
+    MAX(CASE WHEN event_name = 'page_view' THEN 1 ELSE 0 END) AS visited,
+    MAX(CASE WHEN event_name = 'customize_product' THEN 1 ELSE 0 END) AS explored,
+    MAX(CASE WHEN event_name = 'add_to_cart' THEN 1 ELSE 0 END) AS carted,
+    MAX(CASE WHEN event_name = 'begin_checkout' THEN 1 ELSE 0 END) AS checkout_started,
+    MAX(CASE WHEN event_name = 'purchase' THEN 1 ELSE 0 END) AS purchased
+  FROM \`analytics.events_stream\`
+  GROUP BY session_id
+)
+SELECT
+  COUNT(*) AS total_sessions,
+  ROUND(100.0 * SUM(explored) / SUM(visited), 2) AS explore_rate_pct,
+  ROUND(100.0 * SUM(carted) / SUM(explored), 2) AS cart_rate_pct,
+  ROUND(100.0 * SUM(checkout_started) / SUM(carted), 2) AS checkout_rate_pct,
+  ROUND(100.0 * SUM(purchased) / SUM(checkout_started), 2) AS payment_success_rate_pct,
+  ROUND(100.0 * SUM(purchased) / COUNT(*), 2) AS overall_cr_pct
+FROM funnel;`,
+                          'sql-1'
+                        )
+                      }
+                      className="px-2.5 py-1 text-xs bg-stone-800 hover:bg-stone-700 text-stone-200 rounded flex items-center gap-1 cursor-pointer"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      {copiedId === 'sql-1' ? 'Đã copy SQL!' : 'Copy SQL'}
+                    </button>
+                  </div>
+                  <pre className="p-4 text-xs font-mono text-emerald-400 bg-black/40 overflow-x-auto">
+{`WITH funnel AS (
+  SELECT
+    session_id,
+    MAX(CASE WHEN event_name = 'page_view' THEN 1 ELSE 0 END) AS visited,
+    MAX(CASE WHEN event_name = 'customize_product' THEN 1 ELSE 0 END) AS explored,
+    MAX(CASE WHEN event_name = 'add_to_cart' THEN 1 ELSE 0 END) AS carted,
+    MAX(CASE WHEN event_name = 'begin_checkout' THEN 1 ELSE 0 END) AS checkout_started,
+    MAX(CASE WHEN event_name = 'purchase' THEN 1 ELSE 0 END) AS purchased
+  FROM \`analytics.events_stream\`
+  GROUP BY session_id
+)
+SELECT
+  COUNT(*) AS total_sessions,
+  ROUND(100.0 * SUM(explored) / SUM(visited), 2) AS explore_rate_pct,
+  ROUND(100.0 * SUM(carted) / SUM(explored), 2) AS cart_rate_pct,
+  ROUND(100.0 * SUM(checkout_started) / SUM(carted), 2) AS checkout_rate_pct,
+  ROUND(100.0 * SUM(purchased) / SUM(checkout_started), 2) AS payment_success_rate_pct,
+  ROUND(100.0 * SUM(purchased) / COUNT(*), 2) AS overall_cr_pct
+FROM funnel;`}
+                  </pre>
+                </div>
+
+                {/* SQL Query 2: AOV & UPT by Style & Color */}
+                <div className="bg-stone-950 rounded-xl border border-stone-800 overflow-hidden">
+                  <div className="p-3 bg-stone-900/60 border-b border-stone-800 flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-bold text-white font-mono">2. Phân Tích AOV, UPT & Doanh Thu Theo Dáng Quần (Jogger vs Straight)</span>
+                      <p className="text-[11px] text-stone-400">Tìm kiếm dòng sản phẩm kéo doanh thu trung bình (AOV) cao nhất</p>
+                    </div>
+                    <button
+                      onClick={() =>
+                        handleCopy(
+                          `SELECT
+  style,
+  color,
+  COUNT(DISTINCT session_id) AS total_buyers,
+  SUM(quantity) AS total_units_sold,
+  ROUND(AVG(total_value), 2) AS average_order_value_usd,
+  ROUND(1.0 * SUM(quantity) / COUNT(DISTINCT session_id), 2) AS units_per_transaction_upt,
+  ROUND(100.0 * COUNT(CASE WHEN is_multi_item = 'YES' THEN 1 END) / COUNT(*), 2) AS multi_item_adoption_rate
+FROM \`analytics.flattened_events\`
+WHERE event_name = 'purchase'
+GROUP BY style, color
+ORDER BY average_order_value_usd DESC;`,
+                          'sql-2'
+                        )
+                      }
+                      className="px-2.5 py-1 text-xs bg-stone-800 hover:bg-stone-700 text-stone-200 rounded flex items-center gap-1 cursor-pointer"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      {copiedId === 'sql-2' ? 'Đã copy SQL!' : 'Copy SQL'}
+                    </button>
+                  </div>
+                  <pre className="p-4 text-xs font-mono text-cyan-400 bg-black/40 overflow-x-auto">
+{`SELECT
+  style,
+  color,
+  COUNT(DISTINCT session_id) AS total_buyers,
+  SUM(quantity) AS total_units_sold,
+  ROUND(AVG(total_value), 2) AS average_order_value_usd,
+  ROUND(1.0 * SUM(quantity) / COUNT(DISTINCT session_id), 2) AS units_per_transaction_upt,
+  ROUND(100.0 * COUNT(CASE WHEN is_multi_item = 'YES' THEN 1 END) / COUNT(*), 2) AS multi_item_adoption_rate
+FROM \`analytics.flattened_events\`
+WHERE event_name = 'purchase'
+GROUP BY style, color
+ORDER BY average_order_value_usd DESC;`}
+                  </pre>
+                </div>
+              </div>
+
+              {/* Python Script Section */}
+              <div className="bg-stone-950 rounded-xl border border-stone-800 overflow-hidden">
+                <div className="p-3 bg-stone-900/60 border-b border-stone-800 flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-white font-mono">3. Code Python / Pandas Tự Động Phân Tích File CSV Vừa Tải Về</span>
+                    <p className="text-[11px] text-stone-400">Copy đoạn code này chạy trên Jupyter Notebook hoặc Google Colab</p>
+                  </div>
+                  <button
+                    onClick={() =>
+                      handleCopy(
+                        `import pandas as pd
+
+# 1. Đọc file CSV vừa xuất ra từ website
+df = pd.read_csv('stretchactive_bi_events.csv')
+
+# 2. Tính toán AOV & UPT
+purchases = df[df['Event_Name'] == 'purchase']
+aov = purchases['Total_Value_USD'].mean()
+upt = purchases['Quantity'].mean()
+multi_rate = (purchases['Is_Multi_Item'] == 'YES').mean() * 100
+
+print(f"=== BÁO CÁO TĂNG TRƯỞNG D2C ===")
+print(f"Average Order Value (AOV): \${aov:.2f}")
+print(f"Units Per Transaction (UPT): {upt:.2f} quần/đơn")
+print(f"Tỷ lệ mua combo 2+ quần: {multi_rate:.1f}%")
+
+# 3. Phân bổ doanh thu theo Style
+style_perf = purchases.groupby('Style')['Total_Value_USD'].agg(['count', 'mean', 'sum'])
+print(style_perf)`,
+                        'python-1'
+                      )
+                    }
+                    className="px-2.5 py-1 text-xs bg-stone-800 hover:bg-stone-700 text-stone-200 rounded flex items-center gap-1 cursor-pointer"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    {copiedId === 'python-1' ? 'Đã copy Python!' : 'Copy Python'}
+                  </button>
+                </div>
+                <pre className="p-4 text-xs font-mono text-amber-300 bg-black/40 overflow-x-auto">
+{`import pandas as pd
+
+# Đọc file CSV vừa xuất ra từ hệ thống
+df = pd.read_csv('stretchactive_bi_events.csv')
+
+purchases = df[df['Event_Name'] == 'purchase']
+print(f"AOV: \${purchases['Total_Value_USD'].mean():.2f}")
+print(f"UPT (Quần / Đơn): {purchases['Quantity'].mean():.2f}")
+print(f"Tỷ lệ mua combo 2+ sản phẩm: {((purchases['Is_Multi_Item'] == 'YES').mean() * 100):.1f}%")`}
+                </pre>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'events' && (
             <div className="h-full flex flex-col gap-4 overflow-hidden">
               {/* Controls bar: Toggle Table/JSON + Export CSV + Test buttons */}
@@ -495,7 +815,7 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
                       }`}
                     >
                       <Table className="w-3.5 h-3.5" />
-                      <span>Dạng Bảng (Table View)</span>
+                      <span>Dạng Bảng Đa Chiều (Table View)</span>
                     </button>
                     <button
                       onClick={() => setEventViewMode('json')}
@@ -512,11 +832,11 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
 
                   <button
                     onClick={handleExportCsv}
-                    className="px-3 py-1.5 bg-stone-800 hover:bg-stone-700 text-stone-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 border border-stone-700 transition-colors cursor-pointer"
-                    title="Tải về file Excel / CSV dạng bảng"
+                    className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+                    title="Tải về file Excel / CSV dạng bảng đầy đủ 18 cột"
                   >
-                    <Download className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Xuất file Excel / CSV</span>
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Xuất CSV 18 Cột Chuẩn BI</span>
                   </button>
                 </div>
 
@@ -547,75 +867,77 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
               {eventViewMode === 'table' ? (
                 <div className="flex-1 bg-stone-950 rounded-xl border border-stone-800 overflow-hidden flex flex-col">
                   <div className="overflow-x-auto flex-1">
-                    <table className="w-full text-left border-collapse text-xs">
+                    <table className="w-full text-left border-collapse text-xs whitespace-nowrap">
                       <thead>
                         <tr className="bg-stone-900 border-b border-stone-800 text-stone-400 uppercase text-[10px] font-mono tracking-wider sticky top-0">
                           <th className="p-3">Thời gian</th>
                           <th className="p-3">User ID</th>
                           <th className="p-3">Session ID</th>
+                          <th className="p-3">Bước Phễu (Funnel)</th>
                           <th className="p-3">Sự kiện (Event)</th>
-                          <th className="p-3">Danh mục</th>
-                          <th className="p-3">Chi tiết / Sản phẩm</th>
-                          <th className="p-3">Số lượng</th>
-                          <th className="p-3">Giá trị ($)</th>
-                          <th className="p-3">Nền tảng đồng bộ</th>
+                          <th className="p-3">Dáng quần (Style)</th>
+                          <th className="p-3">Màu sắc</th>
+                          <th className="p-3">Size / Inseam</th>
+                          <th className="p-3">Số lượng (UPT)</th>
+                          <th className="p-3">Đơn giá ($)</th>
+                          <th className="p-3">Tổng ($)</th>
+                          <th className="p-3">Tiết kiệm ($)</th>
+                          <th className="p-3">Combo?</th>
+                          <th className="p-3">Chi tiết / Offer</th>
+                          <th className="p-3">Cổng TT</th>
+                          <th className="p-3">Nền tảng</th>
                           <th className="p-3 text-right">Xem JSON</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-stone-900 font-mono">
                         {events.length === 0 ? (
                           <tr>
-                            <td colSpan={10} className="p-8 text-center text-stone-500 font-sans">
+                            <td colSpan={17} className="p-8 text-center text-stone-500 font-sans">
                               Chưa có sự kiện nào. Hãy tương tác với trang (chọn màu, chọn size, thêm giỏ, thanh toán) để kiểm tra tracking!
                             </td>
                           </tr>
                         ) : (
                           events.map((evt) => {
-                            const val = evt.payload.value || evt.payload.price || 0;
-                            const qty = evt.payload.quantity || evt.payload.num_items || '-';
-                            const detailText =
-                              evt.payload.item_name ||
-                              evt.payload.content_name ||
-                              evt.payload.offer_title ||
-                              evt.payload.customization_value ||
-                              evt.payload.page_title ||
-                              '-';
-
+                            const f = flattenRecord(evt);
                             return (
                               <tr key={evt.id} className="hover:bg-stone-900/60 transition-colors">
-                                <td className="p-3 text-stone-400 whitespace-nowrap text-[11px]">
-                                  {evt.timestamp}
-                                </td>
-                                <td className="p-3 whitespace-nowrap text-[11px] font-mono text-emerald-400 font-bold">
-                                  {evt.userId || tracker.getUserId()}
-                                </td>
-                                <td className="p-3 whitespace-nowrap text-[11px] font-mono text-cyan-400">
-                                  {evt.sessionId || tracker.getSessionId()}
-                                </td>
-                                <td className="p-3 whitespace-nowrap">
-                                  <span className="font-bold text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/30">
-                                    {evt.eventName}
+                                <td className="p-3 text-stone-400 text-[11px]">{f.timestamp}</td>
+                                <td className="p-3 text-emerald-400 font-bold text-[11px]">{f.userId}</td>
+                                <td className="p-3 text-cyan-400 text-[11px]">{f.sessionId}</td>
+                                <td className="p-3">
+                                  <span className="bg-stone-800 text-stone-200 px-2 py-0.5 rounded text-[10px] font-sans font-semibold">
+                                    {f.funnelStep}
                                   </span>
                                 </td>
-                                <td className="p-3 text-stone-300 capitalize font-sans">{evt.category}</td>
-                                <td className="p-3 text-stone-200 max-w-[200px] truncate font-sans" title={String(detailText)}>
-                                  {String(detailText)}
+                                <td className="p-3">
+                                  <span className="font-bold text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/30">
+                                    {f.eventName}
+                                  </span>
                                 </td>
-                                <td className="p-3 text-stone-300">{qty}</td>
-                                <td className="p-3 font-bold text-stone-100">
-                                  {val > 0 ? `$${Number(val).toFixed(2)}` : '-'}
+                                <td className="p-3 text-stone-200 font-sans">{f.style}</td>
+                                <td className="p-3 text-stone-300 font-sans">{f.color}</td>
+                                <td className="p-3 text-stone-300 font-sans">{f.size} {f.inseam !== '-' ? `/ ${f.inseam}` : ''}</td>
+                                <td className="p-3 font-bold text-center text-white">{f.quantity}</td>
+                                <td className="p-3 text-stone-300">{f.unitPrice !== '-' ? `$${f.unitPrice}` : '-'}</td>
+                                <td className="p-3 font-bold text-emerald-400">{f.totalValue !== '-' ? `$${f.totalValue}` : '-'}</td>
+                                <td className="p-3 text-green-400">{f.savings !== '-' && f.savings !== '0.00' ? `$${f.savings}` : '-'}</td>
+                                <td className="p-3">
+                                  {f.isMultiItem === 'YES' ? (
+                                    <span className="bg-emerald-900/60 text-emerald-300 px-1.5 py-0.5 rounded text-[10px] font-bold">
+                                      YES (Combo)
+                                    </span>
+                                  ) : (
+                                    <span className="text-stone-500 text-[10px]">NO</span>
+                                  )}
                                 </td>
-                                <td className="p-3 whitespace-nowrap">
-                                  <div className="flex items-center gap-1">
-                                    {evt.platforms.map((p) => (
-                                      <span
-                                        key={p}
-                                        className="text-[9px] uppercase px-1 py-0.2 rounded font-bold bg-stone-800 text-stone-300"
-                                      >
-                                        {p}
-                                      </span>
-                                    ))}
-                                  </div>
+                                <td className="p-3 text-stone-300 max-w-[160px] truncate font-sans" title={f.actionDetail}>
+                                  {f.actionDetail}
+                                </td>
+                                <td className="p-3 text-stone-300 uppercase text-[10px]">{f.paymentMethod}</td>
+                                <td className="p-3">
+                                  <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-stone-800 text-stone-300">
+                                    {f.platforms}
+                                  </span>
                                 </td>
                                 <td className="p-3 text-right">
                                   <button
@@ -625,7 +947,7 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
                                     }}
                                     className="text-emerald-400 hover:text-emerald-300 underline text-[11px] cursor-pointer"
                                   >
-                                    Chi tiết
+                                    JSON
                                   </button>
                                 </td>
                               </tr>
