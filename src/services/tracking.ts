@@ -45,34 +45,22 @@ class TrackingService {
   }
 
   private initIdentity(): { userId: string; sessionId: string; sessionNumber: number } {
-    let uid = '';
-    let sid = '';
     let sNum = 1;
 
     try {
-      uid = localStorage.getItem('sa_analytics_user_id') || '';
-      if (!uid) {
-        uid = `usr_${Math.random().toString(36).substring(2, 9)}_${Date.now().toString(36)}`;
-        localStorage.setItem('sa_analytics_user_id', uid);
-      }
-
-      sNum = parseInt(localStorage.getItem('sa_session_number') || '1', 10);
-      const lastSessionTs = parseInt(sessionStorage.getItem('sa_session_timestamp') || '0', 10);
-      const now = Date.now();
-      const thirtyMins = 30 * 60 * 1000;
-
-      sid = sessionStorage.getItem('sa_analytics_session_id') || '';
-      if (!sid || (lastSessionTs && now - lastSessionTs > thirtyMins)) {
-        sid = `sess_${Math.random().toString(36).substring(2, 8)}_${Date.now().toString(36)}`;
-        sessionStorage.setItem('sa_analytics_session_id', sid);
-        sNum = lastSessionTs ? sNum + 1 : sNum;
-        localStorage.setItem('sa_session_number', sNum.toString());
-      }
-      sessionStorage.setItem('sa_session_timestamp', now.toString());
+      sNum = parseInt(localStorage.getItem('stretchactive_visitor_counter') || '0', 10) + 1;
+      localStorage.setItem('stretchactive_visitor_counter', sNum.toString());
     } catch {
-      uid = `usr_${Math.random().toString(36).substring(2, 9)}`;
-      sid = `sess_${Math.random().toString(36).substring(2, 8)}`;
+      sNum = 1;
     }
+
+    // Every F5 creates a brand new visitor & session (simulation of multiple distinct customers)
+    const randUser = Math.random().toString(36).substring(2, 7);
+    const randSess = Math.random().toString(36).substring(2, 7);
+    const timeCode = Date.now().toString(36).slice(-4);
+
+    const uid = `usr_${randUser}_${timeCode}`;
+    const sid = `sess_${randSess}_${timeCode}`;
 
     return { userId: uid, sessionId: sid, sessionNumber: sNum };
   }
@@ -88,9 +76,6 @@ class TrackingService {
   public setUserId(customId: string) {
     if (!customId) return;
     this.userId = customId;
-    try {
-      localStorage.setItem('sa_analytics_user_id', customId);
-    } catch {}
     this.dispatch('identify_user', 'lead', ['gtm', 'ga4', 'meta'], {
       user_id: this.userId,
       session_id: this.sessionId,
@@ -98,14 +83,9 @@ class TrackingService {
   }
 
   public renewSession(): string {
-    const newSid = `sess_${Math.random().toString(36).substring(2, 8)}_${Date.now().toString(36)}`;
+    const newSid = `sess_${Math.random().toString(36).substring(2, 7)}_${Date.now().toString(36).slice(-4)}`;
     this.sessionId = newSid;
     this.sessionNumber += 1;
-    try {
-      sessionStorage.setItem('sa_analytics_session_id', newSid);
-      sessionStorage.setItem('sa_session_timestamp', Date.now().toString());
-      localStorage.setItem('sa_session_number', this.sessionNumber.toString());
-    } catch {}
     return newSid;
   }
 
@@ -159,18 +139,18 @@ class TrackingService {
   private loadEvents(): TrackingEventRecord[] {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_EVENTS);
-      if (saved) return JSON.parse(saved).slice(0, 50);
+      if (saved) return JSON.parse(saved).slice(0, 300);
     } catch (e) {}
     return [];
   }
 
   private recordEvent(record: TrackingEventRecord) {
     this.events.unshift(record);
-    if (this.events.length > 100) {
-      this.events = this.events.slice(0, 100);
+    if (this.events.length > 300) {
+      this.events = this.events.slice(0, 300);
     }
     try {
-      localStorage.setItem(STORAGE_KEY_EVENTS, JSON.stringify(this.events.slice(0, 50)));
+      localStorage.setItem(STORAGE_KEY_EVENTS, JSON.stringify(this.events.slice(0, 300)));
     } catch (e) {}
     this.notify();
   }
@@ -210,9 +190,9 @@ class TrackingService {
     const timestamp = new Date().toLocaleTimeString();
     const id = `${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
 
-    // Keep session active
+    // Keep session active in localStorage
     try {
-      sessionStorage.setItem('sa_session_timestamp', Date.now().toString());
+      localStorage.setItem('stretchactive_analytics_session_ts', Date.now().toString());
     } catch {}
 
     const enrichedPayload = {

@@ -42,6 +42,7 @@ const DEFAULT_ITEMS: CartItem[] = [
 ];
 
 export default function App() {
+  // Cart refreshes to fresh state on every F5 reload
   const [cartItems, setCartItems] = useState<CartItem[]>(DEFAULT_ITEMS);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
