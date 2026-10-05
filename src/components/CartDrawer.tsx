@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { CartItem } from '../types';
 import { tracker } from '../services/tracking';
-import { Minus, Plus, X } from 'lucide-react';
+import { Minus, Plus, ShoppingBag, X } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
@@ -114,11 +114,25 @@ export const CartDrawer: React.FC<Props> = ({
           {/* Cart Item List */}
           <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-6">
             {items.length === 0 ? (
-              <div className="h-64 flex flex-col items-center justify-center text-center p-6 text-stone-400">
-                <p className="font-bold text-stone-700 text-base">Your cart is empty</p>
-                <p className="text-xs text-stone-500 mt-1">
-                  Select your size and color to add pants to your cart.
+              <div className="h-72 flex flex-col items-center justify-center text-center p-6 text-stone-400">
+                <div className="w-16 h-16 rounded-full bg-stone-100 flex items-center justify-center mb-3 text-stone-400">
+                  <ShoppingBag className="w-7 h-7 text-stone-500" />
+                </div>
+                <p className="font-bold text-stone-900 text-base">Your cart is empty</p>
+                <p className="text-xs text-stone-500 mt-1 max-w-xs leading-relaxed">
+                  Choose your favorite style, color and size to get the 50% - 70% clearance deal!
                 </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    const buyBox = document.getElementById('buy-box') || document.querySelector('section');
+                    buyBox?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  className="mt-5 px-6 py-2.5 bg-[#18181b] hover:bg-black text-white text-xs font-bold uppercase rounded-lg tracking-wider transition-colors cursor-pointer"
+                >
+                  Shop Now & Save 70%
+                </button>
               </div>
             ) : (
               calculatedItems.map((item) => (

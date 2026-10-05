@@ -20,30 +20,9 @@ import { TrackingFloatingBadge } from './components/TrackingFloatingBadge';
 import { ShoppingCart } from 'lucide-react';
 import { COLOR_STYLE_OPTIONS } from './data/mockData';
 
-const DEFAULT_ITEMS: CartItem[] = [
-  {
-    id: 'SA-khaki-jogger-2X-Reg',
-    productTitle: "StretchActive – Women's Ultra Stretch Ice Silk Comfort Casual Pants",
-    colorStyle: COLOR_STYLE_OPTIONS.find((c) => c.id === 'khaki-jogger') || COLOR_STYLE_OPTIONS[0],
-    size: '2X (20W-22W)',
-    inseam: 'Regular (29-31")',
-    quantity: 1,
-    unitPrice: 31.46,
-  },
-  {
-    id: 'SA-black-jogger-3X-Tall',
-    productTitle: "StretchActive – Women's Ultra Stretch Ice Silk Comfort Casual Pants",
-    colorStyle: COLOR_STYLE_OPTIONS.find((c) => c.id === 'black-jogger') || COLOR_STYLE_OPTIONS[7],
-    size: '3X (24W)',
-    inseam: 'Tall (32-34")',
-    quantity: 4,
-    unitPrice: 25.95,
-  },
-];
-
 export default function App() {
-  // Cart refreshes to fresh state on every F5 reload
-  const [cartItems, setCartItems] = useState<CartItem[]>(DEFAULT_ITEMS);
+  // Fresh visitor starts with an empty cart on every F5
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isOrderSuccessOpen, setIsOrderSuccessOpen] = useState(false);
