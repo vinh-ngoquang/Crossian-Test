@@ -3,23 +3,31 @@ import { tracker } from '../services/tracking';
 import { PixelConfig, TrackingEventRecord } from '../types';
 import {
   Activity,
+  AlertTriangle,
+  ArrowDown,
   ArrowRight,
   BarChart3,
   CheckCircle2,
   Code,
   Copy,
+  CreditCard,
   Database,
   Download,
   ExternalLink,
+  Eye,
+  Filter,
   Flame,
   Info,
+  Layers,
   Maximize2,
   Minimize2,
   Percent,
   RefreshCw,
   Settings,
   ShieldCheck,
+  ShoppingBag,
   ShoppingCart,
+  Sliders,
   Table,
   Terminal,
   Trash2,
@@ -106,7 +114,7 @@ export function flattenRecord(e: TrackingEventRecord): FlattenedEventRow {
 }
 
 export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => {
-  const [activeTab, setActiveTab] = useState<'events' | 'analytics' | 'analyst_sql' | 'config' | 'guide'>('analytics');
+  const [activeTab, setActiveTab] = useState<'events' | 'analytics' | 'config' | 'guide'>('analytics');
   const [eventViewMode, setEventViewMode] = useState<'table' | 'json'>('table');
   const [events, setEvents] = useState<TrackingEventRecord[]>([]);
   const [config, setConfig] = useState<PixelConfig>(tracker.getConfig());
@@ -279,9 +287,12 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => tracker.clearEvents()}
-              title="Xóa nhật ký sự kiện"
-              className="p-2 text-stone-400 hover:text-rose-400 hover:bg-stone-800 rounded-lg transition-colors"
+              onClick={() => {
+                tracker.clearEvents();
+                setEvents([]);
+              }}
+              title="Xóa toàn bộ dữ liệu tracking"
+              className="p-2 text-stone-400 hover:text-rose-400 hover:bg-stone-800 rounded-lg transition-colors cursor-pointer"
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -354,19 +365,8 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
                 : 'border-transparent text-stone-400 hover:text-stone-200'
             }`}
           >
-            <TrendingUp className="w-4 h-4" />
-            Phân tích CR & AOV (Growth Funnel)
-          </button>
-          <button
-            onClick={() => setActiveTab('analyst_sql')}
-            className={`px-4 py-3 text-sm font-medium border-b-2 flex items-center gap-2 transition-colors whitespace-nowrap ${
-              activeTab === 'analyst_sql'
-                ? 'border-emerald-500 text-emerald-400 font-semibold'
-                : 'border-transparent text-stone-400 hover:text-stone-200'
-            }`}
-          >
-            <Database className="w-4 h-4" />
-            Góc Data Analyst (SQL & Pipeline)
+            <Filter className="w-4 h-4 text-emerald-400" />
+            Sơ Đồ Phễu Chuyển Đổi (Visual Funnel & CR)
           </button>
           <button
             onClick={() => setActiveTab('events')}
@@ -407,158 +407,446 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
         <div className="flex-1 overflow-hidden p-6">
           {activeTab === 'analytics' && (
             <div className="h-full overflow-y-auto pr-2 space-y-6">
-              {/* Top 4 KPI Metrics */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-stone-950 p-4 rounded-xl border border-stone-800">
-                  <div className="flex items-center justify-between text-xs text-stone-400">
-                    <span>Overall CR (Tỷ lệ chuyển đổi)</span>
-                    <Percent className="w-4 h-4 text-emerald-400" />
-                  </div>
-                  <div className="text-2xl font-black text-white mt-2 font-mono">
-                    {events.filter((e) => e.eventName === 'purchase').length > 0
-                      ? `${(
-                          (events.filter((e) => e.eventName === 'purchase').length /
-                            Math.max(1, events.filter((e) => e.eventName === 'page_view').length)) *
-                          100
-                        ).toFixed(1)}%`
-                      : '3.8%'}
-                  </div>
-                  <div className="text-[11px] text-emerald-400 mt-1 flex items-center gap-1">
-                    <TrendingUp className="w-3 h-3" />
-                    <span>Benchmark D2C: 2.5% - 4.2%</span>
-                  </div>
-                </div>
+              {/* Top 4 KPI Metrics (Computed 100% Real-Time from Events) */}
+              {(() => {
+                const pageViews = events.filter((e) => e.eventName === 'page_view').length;
+                const purchases = events.filter((e) => e.eventName === 'purchase');
+                const purchaseCount = purchases.length;
+                const totalRevenue = purchases.reduce(
+                  (acc, p) => acc + (p.payload.value || p.payload.price || 0),
+                  0
+                );
+                const totalUnits = purchases.reduce(
+                  (acc, p) => acc + (p.payload.quantity || p.payload.num_items || 1),
+                  0
+                );
+                const upsellClicks = events.filter((e) => e.eventName === 'upsell_click').length;
+                const upsellImpressions = events.filter((e) => e.eventName === 'upsell_impression').length;
 
-                <div className="bg-stone-950 p-4 rounded-xl border border-stone-800">
-                  <div className="flex items-center justify-between text-xs text-stone-400">
-                    <span>Average Order Value (AOV)</span>
-                    <TrendingUp className="w-4 h-4 text-amber-400" />
-                  </div>
-                  <div className="text-2xl font-black text-amber-400 mt-2 font-mono">
-                    $
-                    {events.filter((e) => e.eventName === 'purchase').length > 0
-                      ? (
-                          events
-                            .filter((e) => e.eventName === 'purchase')
-                            .reduce((acc, p) => acc + (p.payload.value || 0), 0) /
-                          events.filter((e) => e.eventName === 'purchase').length
-                        ).toFixed(2)
-                      : '135.26'}
-                  </div>
-                  <div className="text-[11px] text-stone-400 mt-1">
-                    Cao hơn +$42 nhờ combo 2+ quần
-                  </div>
-                </div>
+                const cr =
+                  pageViews > 0 && purchaseCount > 0
+                    ? ((purchaseCount / pageViews) * 100).toFixed(1)
+                    : '0.0';
+                const aov = purchaseCount > 0 ? (totalRevenue / purchaseCount).toFixed(2) : '0.00';
+                const upt = purchaseCount > 0 ? (totalUnits / purchaseCount).toFixed(1) : '0.0';
+                const upsellRate =
+                  upsellImpressions > 0 && upsellClicks > 0
+                    ? ((upsellClicks / upsellImpressions) * 100).toFixed(1)
+                    : '0.0';
 
-                <div className="bg-stone-950 p-4 rounded-xl border border-stone-800">
-                  <div className="flex items-center justify-between text-xs text-stone-400">
-                    <span>Units Per Order (UPT)</span>
-                    <ShoppingCart className="w-4 h-4 text-cyan-400" />
-                  </div>
-                  <div className="text-2xl font-black text-white mt-2 font-mono">
-                    2.8 quần / đơn
-                  </div>
-                  <div className="text-[11px] text-cyan-400 mt-1">
-                    Động lực chính thúc đẩy AOV
-                  </div>
-                </div>
+                const customizeCount = events.filter(
+                  (e) => e.eventName === 'customize_product'
+                ).length;
+                const cartCount = events.filter((e) => e.eventName === 'add_to_cart').length;
+                const checkoutCount = events.filter(
+                  (e) => e.eventName === 'begin_checkout'
+                ).length;
 
-                <div className="bg-stone-950 p-4 rounded-xl border border-stone-800">
-                  <div className="flex items-center justify-between text-xs text-stone-400">
-                    <span>Tỷ lệ Click Upsell (+30%)</span>
-                    <Flame className="w-4 h-4 text-rose-400" />
-                  </div>
-                  <div className="text-2xl font-black text-rose-400 mt-2 font-mono">
-                    {events.filter((e) => e.eventName === 'upsell_click').length > 0
-                      ? `${(
-                          (events.filter((e) => e.eventName === 'upsell_click').length /
-                            Math.max(
-                              1,
-                              events.filter((e) => e.eventName === 'upsell_impression').length
-                            )) *
-                          100
-                        ).toFixed(1)}%`
-                      : '34.2%'}
-                  </div>
-                  <div className="text-[11px] text-stone-400 mt-1">
-                    Khách bấm "Select now" trong giỏ
-                  </div>
-                </div>
-              </div>
+                const funnelSteps = [
+                  {
+                    stage: '1. Truy cập Trang (PageView)',
+                    event: 'page_view',
+                    count: pageViews,
+                    rate: pageViews > 0 ? '100%' : '0%',
+                    note: 'Lưu lượng truy cập thực tế từ Ads / Direct',
+                  },
+                  {
+                    stage: '2. Tương tác & Chọn Size/Màu (ViewContent / Customize)',
+                    event: 'customize_product',
+                    count: customizeCount,
+                    rate:
+                      pageViews > 0
+                        ? `${((customizeCount / pageViews) * 100).toFixed(1)}%`
+                        : '0%',
+                    note: 'Khách chọn Dáng quần (Straight/Jogger), Màu sắc và Size chuẩn',
+                  },
+                  {
+                    stage: '3. Thêm vào Giỏ hàng (AddToCart)',
+                    event: 'add_to_cart',
+                    count: cartCount,
+                    rate:
+                      pageViews > 0 ? `${((cartCount / pageViews) * 100).toFixed(1)}%` : '0%',
+                    note: 'Chuyển đổi micro cốt lõi (Micro-CR: Add to Cart Rate)',
+                  },
+                  {
+                    stage: '4. Bắt đầu Thanh toán (InitiateCheckout)',
+                    event: 'begin_checkout',
+                    count: checkoutCount,
+                    rate:
+                      pageViews > 0
+                        ? `${((checkoutCount / pageViews) * 100).toFixed(1)}%`
+                        : '0%',
+                    note: 'Khách bấm Proceed To Checkout hoặc nút PayPal',
+                  },
+                  {
+                    stage: '5. Hoàn tất Đơn hàng (Purchase / CompletePayment)',
+                    event: 'purchase',
+                    count: purchaseCount,
+                    rate:
+                      pageViews > 0
+                        ? `${((purchaseCount / pageViews) * 100).toFixed(1)}%`
+                        : '0%',
+                    note: 'Ghi nhận doanh thu thực tế, gửi tín hiệu Conversion về Pixel',
+                  },
+                ];
 
-              {/* Phễu chuyển đổi Full Funnel Breakdown */}
-              <div className="bg-stone-950 p-6 rounded-2xl border border-stone-800">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h4 className="font-bold text-base text-white flex items-center gap-2">
-                      <BarChart3 className="w-5 h-5 text-emerald-400" />
-                      Phân tích Drop-off Phễu Chuyển Đổi (Conversion Funnel)
-                    </h4>
-                    <p className="text-xs text-stone-400 mt-0.5">
-                      Theo dõi chi tiết tỷ lệ rơi rụng ở từng bước từ lúc xem trang đến khi thanh toán thành công
-                    </p>
-                  </div>
-                </div>
-
-                <div className="space-y-4 pt-2">
-                  {[
-                    {
-                      stage: '1. Truy cập Trang (PageView)',
-                      event: 'page_view',
-                      count: Math.max(1, events.filter((e) => e.eventName === 'page_view').length),
-                      rate: '100%',
-                      note: 'Lưu lượng truy cập từ Meta Ads, Google Ads, TikTok Ads',
-                    },
-                    {
-                      stage: '2. Tương tác & Chọn Size/Màu (ViewContent / Customize)',
-                      event: 'customize_product',
-                      count: Math.max(1, events.filter((e) => e.eventName === 'customize_product').length),
-                      rate: '88.4%',
-                      note: 'Khách chọn Dáng quần (Straight/Jogger), Màu sắc và Size chuẩn',
-                    },
-                    {
-                      stage: '3. Thêm vào Giỏ hàng (AddToCart)',
-                      event: 'add_to_cart',
-                      count: Math.max(1, events.filter((e) => e.eventName === 'add_to_cart').length),
-                      rate: '46.5%',
-                      note: 'Chuyển đổi micro cốt lõi (Micro-CR: Add to Cart Rate)',
-                    },
-                    {
-                      stage: '4. Bắt đầu Thanh toán (InitiateCheckout)',
-                      event: 'begin_checkout',
-                      count: Math.max(1, events.filter((e) => e.eventName === 'begin_checkout').length),
-                      rate: '31.2%',
-                      note: 'Khách bấm Proceed To Checkout hoặc nút PayPal',
-                    },
-                    {
-                      stage: '5. Hoàn tất Đơn hàng (Purchase / CompletePayment)',
-                      event: 'purchase',
-                      count: Math.max(1, events.filter((e) => e.eventName === 'purchase').length),
-                      rate: '12.8%',
-                      note: 'Ghi nhận doanh thu thực tế, gửi tín hiệu Conversion về Pixel',
-                    },
-                  ].map((step, idx) => (
-                    <div key={idx} className="bg-stone-900/60 p-4 rounded-xl border border-stone-800">
-                      <div className="flex items-center justify-between text-xs mb-1.5">
-                        <div className="font-bold text-white flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                          <span>{step.stage}</span>
+                return (
+                  <>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="bg-stone-950 p-4 rounded-xl border border-stone-800">
+                        <div className="flex items-center justify-between text-xs text-stone-400">
+                          <span>Overall CR (Tỷ lệ chuyển đổi)</span>
+                          <Percent className="w-4 h-4 text-emerald-400" />
                         </div>
-                        <div className="font-mono text-emerald-400 font-bold">
-                          {step.count} lượt ({step.rate})
+                        <div className="text-2xl font-black text-white mt-2 font-mono">
+                          {cr}%
+                        </div>
+                        <div className="text-[11px] text-emerald-400 mt-1 flex items-center gap-1">
+                          <TrendingUp className="w-3 h-3" />
+                          <span>
+                            {purchaseCount > 0
+                              ? `${purchaseCount}/${pageViews} lượt mua`
+                              : 'Chưa có đơn hàng'}
+                          </span>
                         </div>
                       </div>
-                      <div className="text-[11px] text-stone-400">{step.note}</div>
-                      <div className="w-full bg-stone-800 h-2 rounded-full mt-2 overflow-hidden">
-                        <div
-                          className="bg-emerald-500 h-full rounded-full transition-all duration-500"
-                          style={{ width: step.rate }}
-                        ></div>
+
+                      <div className="bg-stone-950 p-4 rounded-xl border border-stone-800">
+                        <div className="flex items-center justify-between text-xs text-stone-400">
+                          <span>Average Order Value (AOV)</span>
+                          <TrendingUp className="w-4 h-4 text-amber-400" />
+                        </div>
+                        <div className="text-2xl font-black text-amber-400 mt-2 font-mono">
+                          ${aov}
+                        </div>
+                        <div className="text-[11px] text-stone-400 mt-1">
+                          {purchaseCount > 0
+                            ? `Tổng DT: $${totalRevenue.toFixed(2)}`
+                            : 'Chưa có doanh thu'}
+                        </div>
+                      </div>
+
+                      <div className="bg-stone-950 p-4 rounded-xl border border-stone-800">
+                        <div className="flex items-center justify-between text-xs text-stone-400">
+                          <span>Units Per Order (UPT)</span>
+                          <ShoppingCart className="w-4 h-4 text-cyan-400" />
+                        </div>
+                        <div className="text-2xl font-black text-white mt-2 font-mono">
+                          {upt} quần / đơn
+                        </div>
+                        <div className="text-[11px] text-cyan-400 mt-1">
+                          {purchaseCount > 0
+                            ? `Tổng đã bán: ${totalUnits} chiếc`
+                            : 'Chưa có sản phẩm bán ra'}
+                        </div>
+                      </div>
+
+                      <div className="bg-stone-950 p-4 rounded-xl border border-stone-800">
+                        <div className="flex items-center justify-between text-xs text-stone-400">
+                          <span>Tỷ lệ Click Upsell (+30%)</span>
+                          <Flame className="w-4 h-4 text-rose-400" />
+                        </div>
+                        <div className="text-2xl font-black text-rose-400 mt-2 font-mono">
+                          {upsellRate}%
+                        </div>
+                        <div className="text-[11px] text-stone-400 mt-1">
+                          {upsellImpressions > 0
+                            ? `${upsellClicks}/${upsellImpressions} lượt click ưu đãi`
+                            : 'Chưa mở giỏ hàng'}
+                        </div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
+
+                    {/* SƠ ĐỒ HÌNH PHỄU TRỰC QUAN (VISUAL STEPPED FUNNEL DIAGRAM) */}
+                    <div className="bg-stone-950 p-6 rounded-2xl border border-stone-800 space-y-6">
+                      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-800 pb-4">
+                        <div>
+                          <h4 className="font-bold text-base text-white flex items-center gap-2">
+                            <Filter className="w-5 h-5 text-emerald-400" />
+                            Sơ Đồ Phễu Chuyển Đổi Trực Quan (E-Commerce Visual Funnel)
+                          </h4>
+                          <p className="text-xs text-stone-400 mt-0.5">
+                            Hình phễu 5 tầng đo lường chính xác lượng khách qua từng bước & tỷ lệ rớt (Drop-off Rate)
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-mono text-stone-400">Tỷ lệ hoàn tất phễu:</span>
+                          <span className="px-2.5 py-1 text-xs font-mono font-bold bg-emerald-950/80 text-emerald-400 border border-emerald-500/30 rounded-lg">
+                            {cr}% CR
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Visual Funnel Tiers & Drop-off Bridges */}
+                      <div className="flex flex-col items-center gap-2 py-2">
+                        {/* TẦNG 1: PageView */}
+                        <div className="w-full bg-gradient-to-r from-emerald-950/80 via-emerald-900/40 to-emerald-950/80 border border-emerald-500/40 rounded-xl p-4 shadow-md transition-all hover:border-emerald-400">
+                          <div className="flex items-center justify-between text-xs sm:text-sm">
+                            <div className="flex items-center gap-2.5 font-bold text-white">
+                              <div className="w-7 h-7 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0">
+                                <Eye className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <span className="text-emerald-400 font-mono text-[11px] uppercase mr-2">Tầng 1</span>
+                                <span className="font-semibold text-white">Truy cập Trang (PageView)</span>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-mono font-black text-white text-base">
+                                {pageViews} <span className="text-xs text-stone-400 font-normal">lượt</span>
+                              </div>
+                              <span className="text-[11px] font-mono text-emerald-400 font-bold">100% (Đỉnh phễu)</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* BRIDGE 1 -> 2: Drop-off */}
+                        <div className="flex flex-col items-center justify-center my-0.5">
+                          <div className="h-4 w-px bg-stone-700"></div>
+                          <div className="flex items-center gap-2 px-3 py-1 bg-stone-900 border border-stone-800 rounded-full text-[11px] font-mono text-stone-300 shadow-sm">
+                            <ArrowDown className="w-3 h-3 text-stone-400" />
+                            {pageViews > 0 ? (
+                              <>
+                                <span className="text-rose-400 font-bold">
+                                  -{(Math.max(0, 100 - (customizeCount / pageViews) * 100)).toFixed(1)}% Rớt
+                                </span>
+                                <span className="text-stone-500">({Math.max(0, pageViews - customizeCount)} khách thoát)</span>
+                                <span className="text-stone-600">|</span>
+                                <span className="text-emerald-400">
+                                  {pageViews > 0 ? ((customizeCount / pageViews) * 100).toFixed(1) : 0}% chuyển tiếp
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-stone-500">Chưa có dữ liệu</span>
+                            )}
+                          </div>
+                          <div className="h-4 w-px bg-stone-700"></div>
+                        </div>
+
+                        {/* TẦNG 2: ViewContent / Customize */}
+                        <div
+                          style={{
+                            width: pageViews > 0 ? `${Math.max(48, Math.min(92, (customizeCount / pageViews) * 100))}%` : '85%',
+                          }}
+                          className="bg-gradient-to-r from-cyan-950/80 via-cyan-900/40 to-cyan-950/80 border border-cyan-500/40 rounded-xl p-4 shadow-md transition-all hover:border-cyan-400 min-w-[280px]"
+                        >
+                          <div className="flex items-center justify-between text-xs sm:text-sm">
+                            <div className="flex items-center gap-2.5 font-bold text-white">
+                              <div className="w-7 h-7 rounded-lg bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shrink-0">
+                                <Sliders className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <span className="text-cyan-400 font-mono text-[11px] uppercase mr-2">Tầng 2</span>
+                                <span className="font-semibold text-white">Khám phá & Chọn Size / Màu</span>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-mono font-black text-white text-base">
+                                {customizeCount} <span className="text-xs text-stone-400 font-normal">lượt</span>
+                              </div>
+                              <span className="text-[11px] font-mono text-cyan-400 font-bold">
+                                {pageViews > 0 ? ((customizeCount / pageViews) * 100).toFixed(1) : 0}% của tổng
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* BRIDGE 2 -> 3: Drop-off */}
+                        <div className="flex flex-col items-center justify-center my-0.5">
+                          <div className="h-4 w-px bg-stone-700"></div>
+                          <div className="flex items-center gap-2 px-3 py-1 bg-stone-900 border border-stone-800 rounded-full text-[11px] font-mono text-stone-300 shadow-sm">
+                            <ArrowDown className="w-3 h-3 text-stone-400" />
+                            {customizeCount > 0 ? (
+                              <>
+                                <span className="text-rose-400 font-bold">
+                                  -{(Math.max(0, 100 - (cartCount / customizeCount) * 100)).toFixed(1)}% Rớt
+                                </span>
+                                <span className="text-stone-500">({Math.max(0, customizeCount - cartCount)} xem không thêm giỏ)</span>
+                                <span className="text-stone-600">|</span>
+                                <span className="text-cyan-400">
+                                  {customizeCount > 0 ? ((cartCount / customizeCount) * 100).toFixed(1) : 0}% chuyển tiếp
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-stone-500">Chưa có dữ liệu</span>
+                            )}
+                          </div>
+                          <div className="h-4 w-px bg-stone-700"></div>
+                        </div>
+
+                        {/* TẦNG 3: AddToCart */}
+                        <div
+                          style={{
+                            width: pageViews > 0 ? `${Math.max(42, Math.min(84, (cartCount / pageViews) * 100))}%` : '70%',
+                          }}
+                          className="bg-gradient-to-r from-blue-950/80 via-blue-900/40 to-blue-950/80 border border-blue-500/40 rounded-xl p-4 shadow-md transition-all hover:border-blue-400 min-w-[260px]"
+                        >
+                          <div className="flex items-center justify-between text-xs sm:text-sm">
+                            <div className="flex items-center gap-2.5 font-bold text-white">
+                              <div className="w-7 h-7 rounded-lg bg-blue-500/20 border border-blue-500/40 flex items-center justify-center text-blue-400 shrink-0">
+                                <ShoppingCart className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <span className="text-blue-400 font-mono text-[11px] uppercase mr-2">Tầng 3</span>
+                                <span className="font-semibold text-white">Thêm vào Giỏ hàng (AddToCart)</span>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-mono font-black text-white text-base">
+                                {cartCount} <span className="text-xs text-stone-400 font-normal">lượt</span>
+                              </div>
+                              <span className="text-[11px] font-mono text-blue-400 font-bold">
+                                {pageViews > 0 ? ((cartCount / pageViews) * 100).toFixed(1) : 0}% của tổng
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* BRIDGE 3 -> 4: Drop-off */}
+                        <div className="flex flex-col items-center justify-center my-0.5">
+                          <div className="h-4 w-px bg-stone-700"></div>
+                          <div className="flex items-center gap-2 px-3 py-1 bg-stone-900 border border-stone-800 rounded-full text-[11px] font-mono text-stone-300 shadow-sm">
+                            <ArrowDown className="w-3 h-3 text-stone-400" />
+                            {cartCount > 0 ? (
+                              <>
+                                <span className="text-rose-400 font-bold">
+                                  -{(Math.max(0, 100 - (checkoutCount / cartCount) * 100)).toFixed(1)}% Rớt
+                                </span>
+                                <span className="text-stone-500">({Math.max(0, cartCount - checkoutCount)} bỏ quên giỏ - Cart Abandonment)</span>
+                                <span className="text-stone-600">|</span>
+                                <span className="text-indigo-400">
+                                  {cartCount > 0 ? ((checkoutCount / cartCount) * 100).toFixed(1) : 0}% chuyển tiếp
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-stone-500">Chưa có dữ liệu</span>
+                            )}
+                          </div>
+                          <div className="h-4 w-px bg-stone-700"></div>
+                        </div>
+
+                        {/* TẦNG 4: InitiateCheckout */}
+                        <div
+                          style={{
+                            width: pageViews > 0 ? `${Math.max(36, Math.min(74, (checkoutCount / pageViews) * 100))}%` : '55%',
+                          }}
+                          className="bg-gradient-to-r from-indigo-950/80 via-indigo-900/40 to-indigo-950/80 border border-indigo-500/40 rounded-xl p-4 shadow-md transition-all hover:border-indigo-400 min-w-[240px]"
+                        >
+                          <div className="flex items-center justify-between text-xs sm:text-sm">
+                            <div className="flex items-center gap-2.5 font-bold text-white">
+                              <div className="w-7 h-7 rounded-lg bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 shrink-0">
+                                <CreditCard className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <span className="text-indigo-400 font-mono text-[11px] uppercase mr-2">Tầng 4</span>
+                                <span className="font-semibold text-white">Bắt đầu Thanh toán (Checkout)</span>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-mono font-black text-white text-base">
+                                {checkoutCount} <span className="text-xs text-stone-400 font-normal">lượt</span>
+                              </div>
+                              <span className="text-[11px] font-mono text-indigo-400 font-bold">
+                                {pageViews > 0 ? ((checkoutCount / pageViews) * 100).toFixed(1) : 0}% của tổng
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* BRIDGE 4 -> 5: Drop-off */}
+                        <div className="flex flex-col items-center justify-center my-0.5">
+                          <div className="h-4 w-px bg-stone-700"></div>
+                          <div className="flex items-center gap-2 px-3 py-1 bg-stone-900 border border-stone-800 rounded-full text-[11px] font-mono text-stone-300 shadow-sm">
+                            <ArrowDown className="w-3 h-3 text-stone-400" />
+                            {checkoutCount > 0 ? (
+                              <>
+                                <span className="text-rose-400 font-bold">
+                                  -{(Math.max(0, 100 - (purchaseCount / checkoutCount) * 100)).toFixed(1)}% Rớt
+                                </span>
+                                <span className="text-stone-500">({Math.max(0, checkoutCount - purchaseCount)} hủy thanh toán)</span>
+                                <span className="text-stone-600">|</span>
+                                <span className="text-amber-400">
+                                  {checkoutCount > 0 ? ((purchaseCount / checkoutCount) * 100).toFixed(1) : 0}% thành công
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-stone-500">Chưa có dữ liệu</span>
+                            )}
+                          </div>
+                          <div className="h-4 w-px bg-stone-700"></div>
+                        </div>
+
+                        {/* TẦNG 5: Purchase (Đáy Phễu) */}
+                        <div
+                          style={{
+                            width: pageViews > 0 ? `${Math.max(30, Math.min(65, (purchaseCount / pageViews) * 100))}%` : '42%',
+                          }}
+                          className="bg-gradient-to-r from-amber-950/90 via-emerald-950/60 to-amber-950/90 border-2 border-amber-500/60 rounded-xl p-4 shadow-xl shadow-amber-500/10 transition-all hover:border-amber-400 min-w-[220px]"
+                        >
+                          <div className="flex items-center justify-between text-xs sm:text-sm">
+                            <div className="flex items-center gap-2.5 font-bold text-white">
+                              <div className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-amber-400 shrink-0">
+                                <CheckCircle2 className="w-5 h-5 text-amber-400" />
+                              </div>
+                              <div>
+                                <span className="text-amber-400 font-mono text-[11px] uppercase mr-2 font-bold">Tầng 5 (Đích)</span>
+                                <span className="font-bold text-amber-300">Hoàn tất Mua hàng (Purchase)</span>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-mono font-black text-amber-400 text-lg">
+                                {purchaseCount} <span className="text-xs text-stone-300 font-normal">đơn</span>
+                              </div>
+                              <div className="text-[11px] font-mono text-emerald-400 font-bold">
+                                CR: {cr}% (${totalRevenue.toFixed(2)})
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* CHẨN ĐOÁN ĐIỂM NGHẼN (CRO FUNNEL BOTTLENECK DIAGNOSTICS) */}
+                      {(() => {
+                        const drop1 = pageViews > 0 ? (pageViews - customizeCount) / pageViews : 0;
+                        const drop2 = customizeCount > 0 ? (customizeCount - cartCount) / customizeCount : 0;
+                        const drop3 = cartCount > 0 ? (cartCount - checkoutCount) / cartCount : 0;
+                        const drop4 = checkoutCount > 0 ? (checkoutCount - purchaseCount) / checkoutCount : 0;
+
+                        let bottleneck = 'Chưa có đủ dữ liệu duyệt web để chẩn đoán';
+                        let advice = 'Hãy thử chọn màu, chọn size, thêm giỏ và thanh toán để phễu phân tích điểm rơi rụng.';
+                        if (pageViews > 0) {
+                          const maxDrop = Math.max(drop1, drop2, drop3, drop4);
+                          if (maxDrop === drop3 && cartCount > 0) {
+                            bottleneck = 'Điểm nghẽn lớn nhất: Giỏ hàng ➔ Bắt đầu Thanh toán (Cart Abandonment)';
+                            advice = 'Khách thêm vào giỏ nhưng không bấm Checkout. Giải pháp: Thêm nút PayPal Express 1-click hoặc hiển thị rõ cam kết Miễn Phí Đổi Trả 30 ngày.';
+                          } else if (maxDrop === drop2 && customizeCount > 0) {
+                            bottleneck = 'Điểm nghẽn lớn nhất: Chọn Biến thể ➔ Thêm Giỏ hàng';
+                            advice = 'Khách chọn màu và size nhưng chần chừ bấm Add to Cart. Giải pháp: Nổi bật ưu đãi "Giảm 70% hôm nay" và đồng hồ đếm ngược kích cầu.';
+                          } else if (maxDrop === drop4 && checkoutCount > 0) {
+                            bottleneck = 'Điểm nghẽn lớn nhất: Bắt đầu Checkout ➔ Hoàn tất Mua hàng';
+                            advice = 'Khách mở form thanh toán nhưng bỏ dở. Giải pháp: Đơn giản hóa form, bổ sung huy hiệu bảo mật SSL và đa dạng cổng thanh toán.';
+                          } else if (maxDrop === drop1) {
+                            bottleneck = 'Điểm nghẽn lớn nhất: Trang chủ ➔ Tương tác Chọn sản phẩm';
+                            advice = 'Khách vừa vào đã thoát (Bounce). Giải pháp: Tối ưu hình ảnh Hero Banner, hiển thị ngay điểm số 4.9 sao và đánh giá thực tế của khách hàng.';
+                          }
+                        }
+
+                        return (
+                          <div className="bg-stone-900/90 border border-stone-800 rounded-xl p-4 flex items-start gap-3 mt-4">
+                            <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0 mt-0.5">
+                              <AlertTriangle className="w-4 h-4" />
+                            </div>
+                            <div className="space-y-1">
+                              <h5 className="text-xs font-bold text-white font-sans">{bottleneck}</h5>
+                              <p className="text-xs text-stone-400 font-sans leading-relaxed">{advice}</p>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </>
+                );
+              })()}
 
               {/* Trả lời trực tiếp: Tracking hiện tại đã đủ phân tích chưa? */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -597,205 +885,6 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
                     </li>
                   </ul>
                 </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB: GÓC DATA ANALYST (SQL, PYTHON & DATA PIPELINE) */}
-          {activeTab === 'analyst_sql' && (
-            <div className="h-full overflow-y-auto pr-2 space-y-6">
-              {/* Architecture Intro */}
-              <div className="bg-stone-950 p-5 rounded-2xl border border-stone-800 space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
-                    <Database className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-base text-white">
-                      Kiến Trúc Dữ Liệu Phân Tích (Analytics & BI Pipeline)
-                    </h4>
-                    <p className="text-xs text-stone-400">
-                      Cách Data Analyst chuyển hóa Event Stream thành Dashboard đo lường CR & AOV
-                    </p>
-                  </div>
-                </div>
-
-                <div className="p-3 bg-stone-900 rounded-xl border border-stone-800 text-xs text-stone-300 font-mono flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-emerald-400 font-bold">[1. Web Event Stream]</span>
-                  <span>&rarr;</span>
-                  <span className="text-amber-400 font-bold">[2. GTM / Webhook / GA4 BigQuery Export]</span>
-                  <span>&rarr;</span>
-                  <span className="text-cyan-400 font-bold">[3. SQL Data Mart / Flattened Table]</span>
-                  <span>&rarr;</span>
-                  <span className="text-rose-400 font-bold">[4. Looker Studio / Metabase BI Dashboard]</span>
-                </div>
-              </div>
-
-              {/* SQL Queries Section */}
-              <div className="space-y-4">
-                <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                  <Code className="w-4 h-4 text-emerald-400" />
-                  3 Câu Lệnh SQL Chuẩn Mực Cho Data Analyst (BigQuery / Snowflake / PostgreSQL)
-                </h4>
-
-                {/* SQL Query 1: Funnel CR */}
-                <div className="bg-stone-950 rounded-xl border border-stone-800 overflow-hidden">
-                  <div className="p-3 bg-stone-900/60 border-b border-stone-800 flex items-center justify-between">
-                    <div>
-                      <span className="text-xs font-bold text-white font-mono">1. Phân Tích Drop-off Phễu Chuyển Đổi (Conversion Rate Funnel)</span>
-                      <p className="text-[11px] text-stone-400">Đo lường tỷ lệ rớt qua từng bước: PageView &rarr; Customize &rarr; Cart &rarr; Checkout &rarr; Purchase</p>
-                    </div>
-                    <button
-                      onClick={() =>
-                        handleCopy(
-                          `WITH funnel AS (
-  SELECT
-    session_id,
-    MAX(CASE WHEN event_name = 'page_view' THEN 1 ELSE 0 END) AS visited,
-    MAX(CASE WHEN event_name = 'customize_product' THEN 1 ELSE 0 END) AS explored,
-    MAX(CASE WHEN event_name = 'add_to_cart' THEN 1 ELSE 0 END) AS carted,
-    MAX(CASE WHEN event_name = 'begin_checkout' THEN 1 ELSE 0 END) AS checkout_started,
-    MAX(CASE WHEN event_name = 'purchase' THEN 1 ELSE 0 END) AS purchased
-  FROM \`analytics.events_stream\`
-  GROUP BY session_id
-)
-SELECT
-  COUNT(*) AS total_sessions,
-  ROUND(100.0 * SUM(explored) / SUM(visited), 2) AS explore_rate_pct,
-  ROUND(100.0 * SUM(carted) / SUM(explored), 2) AS cart_rate_pct,
-  ROUND(100.0 * SUM(checkout_started) / SUM(carted), 2) AS checkout_rate_pct,
-  ROUND(100.0 * SUM(purchased) / SUM(checkout_started), 2) AS payment_success_rate_pct,
-  ROUND(100.0 * SUM(purchased) / COUNT(*), 2) AS overall_cr_pct
-FROM funnel;`,
-                          'sql-1'
-                        )
-                      }
-                      className="px-2.5 py-1 text-xs bg-stone-800 hover:bg-stone-700 text-stone-200 rounded flex items-center gap-1 cursor-pointer"
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                      {copiedId === 'sql-1' ? 'Đã copy SQL!' : 'Copy SQL'}
-                    </button>
-                  </div>
-                  <pre className="p-4 text-xs font-mono text-emerald-400 bg-black/40 overflow-x-auto">
-{`WITH funnel AS (
-  SELECT
-    session_id,
-    MAX(CASE WHEN event_name = 'page_view' THEN 1 ELSE 0 END) AS visited,
-    MAX(CASE WHEN event_name = 'customize_product' THEN 1 ELSE 0 END) AS explored,
-    MAX(CASE WHEN event_name = 'add_to_cart' THEN 1 ELSE 0 END) AS carted,
-    MAX(CASE WHEN event_name = 'begin_checkout' THEN 1 ELSE 0 END) AS checkout_started,
-    MAX(CASE WHEN event_name = 'purchase' THEN 1 ELSE 0 END) AS purchased
-  FROM \`analytics.events_stream\`
-  GROUP BY session_id
-)
-SELECT
-  COUNT(*) AS total_sessions,
-  ROUND(100.0 * SUM(explored) / SUM(visited), 2) AS explore_rate_pct,
-  ROUND(100.0 * SUM(carted) / SUM(explored), 2) AS cart_rate_pct,
-  ROUND(100.0 * SUM(checkout_started) / SUM(carted), 2) AS checkout_rate_pct,
-  ROUND(100.0 * SUM(purchased) / SUM(checkout_started), 2) AS payment_success_rate_pct,
-  ROUND(100.0 * SUM(purchased) / COUNT(*), 2) AS overall_cr_pct
-FROM funnel;`}
-                  </pre>
-                </div>
-
-                {/* SQL Query 2: AOV & UPT by Style & Color */}
-                <div className="bg-stone-950 rounded-xl border border-stone-800 overflow-hidden">
-                  <div className="p-3 bg-stone-900/60 border-b border-stone-800 flex items-center justify-between">
-                    <div>
-                      <span className="text-xs font-bold text-white font-mono">2. Phân Tích AOV, UPT & Doanh Thu Theo Dáng Quần (Jogger vs Straight)</span>
-                      <p className="text-[11px] text-stone-400">Tìm kiếm dòng sản phẩm kéo doanh thu trung bình (AOV) cao nhất</p>
-                    </div>
-                    <button
-                      onClick={() =>
-                        handleCopy(
-                          `SELECT
-  style,
-  color,
-  COUNT(DISTINCT session_id) AS total_buyers,
-  SUM(quantity) AS total_units_sold,
-  ROUND(AVG(total_value), 2) AS average_order_value_usd,
-  ROUND(1.0 * SUM(quantity) / COUNT(DISTINCT session_id), 2) AS units_per_transaction_upt,
-  ROUND(100.0 * COUNT(CASE WHEN is_multi_item = 'YES' THEN 1 END) / COUNT(*), 2) AS multi_item_adoption_rate
-FROM \`analytics.flattened_events\`
-WHERE event_name = 'purchase'
-GROUP BY style, color
-ORDER BY average_order_value_usd DESC;`,
-                          'sql-2'
-                        )
-                      }
-                      className="px-2.5 py-1 text-xs bg-stone-800 hover:bg-stone-700 text-stone-200 rounded flex items-center gap-1 cursor-pointer"
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                      {copiedId === 'sql-2' ? 'Đã copy SQL!' : 'Copy SQL'}
-                    </button>
-                  </div>
-                  <pre className="p-4 text-xs font-mono text-cyan-400 bg-black/40 overflow-x-auto">
-{`SELECT
-  style,
-  color,
-  COUNT(DISTINCT session_id) AS total_buyers,
-  SUM(quantity) AS total_units_sold,
-  ROUND(AVG(total_value), 2) AS average_order_value_usd,
-  ROUND(1.0 * SUM(quantity) / COUNT(DISTINCT session_id), 2) AS units_per_transaction_upt,
-  ROUND(100.0 * COUNT(CASE WHEN is_multi_item = 'YES' THEN 1 END) / COUNT(*), 2) AS multi_item_adoption_rate
-FROM \`analytics.flattened_events\`
-WHERE event_name = 'purchase'
-GROUP BY style, color
-ORDER BY average_order_value_usd DESC;`}
-                  </pre>
-                </div>
-              </div>
-
-              {/* Python Script Section */}
-              <div className="bg-stone-950 rounded-xl border border-stone-800 overflow-hidden">
-                <div className="p-3 bg-stone-900/60 border-b border-stone-800 flex items-center justify-between">
-                  <div>
-                    <span className="text-xs font-bold text-white font-mono">3. Code Python / Pandas Tự Động Phân Tích File CSV Vừa Tải Về</span>
-                    <p className="text-[11px] text-stone-400">Copy đoạn code này chạy trên Jupyter Notebook hoặc Google Colab</p>
-                  </div>
-                  <button
-                    onClick={() =>
-                      handleCopy(
-                        `import pandas as pd
-
-# 1. Đọc file CSV vừa xuất ra từ website
-df = pd.read_csv('stretchactive_bi_events.csv')
-
-# 2. Tính toán AOV & UPT
-purchases = df[df['Event_Name'] == 'purchase']
-aov = purchases['Total_Value_USD'].mean()
-upt = purchases['Quantity'].mean()
-multi_rate = (purchases['Is_Multi_Item'] == 'YES').mean() * 100
-
-print(f"=== BÁO CÁO TĂNG TRƯỞNG D2C ===")
-print(f"Average Order Value (AOV): \${aov:.2f}")
-print(f"Units Per Transaction (UPT): {upt:.2f} quần/đơn")
-print(f"Tỷ lệ mua combo 2+ quần: {multi_rate:.1f}%")
-
-# 3. Phân bổ doanh thu theo Style
-style_perf = purchases.groupby('Style')['Total_Value_USD'].agg(['count', 'mean', 'sum'])
-print(style_perf)`,
-                        'python-1'
-                      )
-                    }
-                    className="px-2.5 py-1 text-xs bg-stone-800 hover:bg-stone-700 text-stone-200 rounded flex items-center gap-1 cursor-pointer"
-                  >
-                    <Copy className="w-3.5 h-3.5" />
-                    {copiedId === 'python-1' ? 'Đã copy Python!' : 'Copy Python'}
-                  </button>
-                </div>
-                <pre className="p-4 text-xs font-mono text-amber-300 bg-black/40 overflow-x-auto">
-{`import pandas as pd
-
-# Đọc file CSV vừa xuất ra từ hệ thống
-df = pd.read_csv('stretchactive_bi_events.csv')
-
-purchases = df[df['Event_Name'] == 'purchase']
-print(f"AOV: \${purchases['Total_Value_USD'].mean():.2f}")
-print(f"UPT (Quần / Đơn): {purchases['Quantity'].mean():.2f}")
-print(f"Tỷ lệ mua combo 2+ sản phẩm: {((purchases['Is_Multi_Item'] == 'YES').mean() * 100):.1f}%")`}
-                </pre>
               </div>
             </div>
           )}
