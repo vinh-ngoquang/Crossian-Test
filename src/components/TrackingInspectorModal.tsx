@@ -32,6 +32,8 @@ import {
   Terminal,
   Trash2,
   TrendingUp,
+  UserCheck,
+  Users,
   X,
   Zap,
 } from 'lucide-react';
@@ -407,91 +409,173 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
         <div className="flex-1 overflow-hidden p-6">
           {activeTab === 'analytics' && (
             <div className="h-full overflow-y-auto pr-2 space-y-6">
-              {/* Top 4 KPI Metrics (Computed 100% Real-Time from Events) */}
+              {/* Sơ đồ Phễu Chuyển Đổi Đo Lường Theo User (+1 nếu có thao tác, 0 nếu không) */}
               {(() => {
-                const pageViews = events.filter((e) => e.eventName === 'page_view').length;
-                const purchases = events.filter((e) => e.eventName === 'purchase');
-                const purchaseCount = purchases.length;
-                const totalRevenue = purchases.reduce(
-                  (acc, p) => acc + (p.payload.value || p.payload.price || 0),
-                  0
-                );
-                const totalUnits = purchases.reduce(
-                  (acc, p) => acc + (p.payload.quantity || p.payload.num_items || 1),
-                  0
-                );
-                const upsellClicks = events.filter((e) => e.eventName === 'upsell_click').length;
-                const upsellImpressions = events.filter((e) => e.eventName === 'upsell_impression').length;
+                // 1. Phân nhóm sự kiện theo từng User ID duy nhất
+                interface UserFunnelRow {
+                  userId: string;
+                  eventsCount: number;
+                  hasStage1: number; // Tầng 1: Vào trang (Visit) -> +1 nếu có thao tác, 0 nếu không
+                  hasStage2: number; // Tầng 2: Xem / Chọn màu / size / dáng -> +1 hoặc 0
+                  hasStage3: number; // Tầng 3: Thêm vào giỏ hàng (Cart) -> +1 hoặc 0
+                  hasStage4: number; // Tầng 4: Bắt đầu checkout (Checkout) -> +1 hoặc 0
+                  hasStage5: number; // Tầng 5: Mua hàng thành công (Purchase) -> +1 hoặc 0
+                  revenue: number;
+                  units: number;
+                  hasUpsellClick: number;
+                  hasUpsellImpression: number;
+                  statusLabel: string;
+                  lastActionTime: string;
+                }
 
-                const cr =
-                  pageViews > 0 && purchaseCount > 0
-                    ? ((purchaseCount / pageViews) * 100).toFixed(1)
-                    : '0.0';
-                const aov = purchaseCount > 0 ? (totalRevenue / purchaseCount).toFixed(2) : '0.00';
-                const upt = purchaseCount > 0 ? (totalUnits / purchaseCount).toFixed(1) : '0.0';
+                const userMap = new Map<string, UserFunnelRow>();
+
+                events.forEach((e) => {
+                  const uid = e.userId || e.sessionId || 'usr_anonymous';
+                  if (!userMap.has(uid)) {
+                    userMap.set(uid, {
+                      userId: uid,
+                      eventsCount: 0,
+                      hasStage1: 0,
+                      hasStage2: 0,
+                      hasStage3: 0,
+                      hasStage4: 0,
+                      hasStage5: 0,
+                      revenue: 0,
+                      units: 0,
+                      hasUpsellClick: 0,
+                      hasUpsellImpression: 0,
+                      statusLabel: 'Tầng 1 (Chỉ vào trang)',
+                      lastActionTime: e.timestamp,
+                    });
+                  }
+                  const u = userMap.get(uid)!;
+                  u.eventsCount += 1;
+                  u.lastActionTime = e.timestamp;
+                  if (e.eventName === 'upsell_click') u.hasUpsellClick = 1;
+                  if (e.eventName === 'upsell_impression') u.hasUpsellImpression = 1;
+                });
+
+                // Quy tắc: Chỉ quan tâm tầng đó user có thao tác hay không.
+                // Thao tác: +1, không thao tác: 0. Mỗi user chỉ tính tối đa +1 cho mỗi tầng.
+                userMap.forEach((u) => {
+                  const userEvents = events.filter(
+                    (e) => (e.userId || e.sessionId || 'usr_anonymous') === u.userId
+                  );
+                  const evSet = new Set(userEvents.map((e) => e.eventName));
+
+                  // Mọi user có log sự kiện đều đã truy cập trang web (Tầng 1 = 1)
+                  u.hasStage1 = 1;
+
+                  // Tầng 5: Mua hàng thành công (Purchase)
+                  if (evSet.has('purchase')) {
+                    u.hasStage5 = 1;
+                    u.hasStage4 = 1;
+                    u.hasStage3 = 1;
+                    u.hasStage2 = 1;
+                    u.statusLabel = 'Đã hoàn tất đơn hàng 🎉';
+                    userEvents
+                      .filter((e) => e.eventName === 'purchase')
+                      .forEach((e) => {
+                        u.revenue += Number(e.payload?.value || e.payload?.price || 0);
+                        u.units += Number(e.payload?.quantity || e.payload?.num_items || 1);
+                      });
+                  }
+                  // Tầng 4: Bắt đầu checkout
+                  else if (
+                    evSet.has('begin_checkout') ||
+                    evSet.has('add_shipping_info') ||
+                    evSet.has('add_payment_info')
+                  ) {
+                    u.hasStage4 = 1;
+                    u.hasStage3 = 1;
+                    u.hasStage2 = 1;
+                    u.statusLabel = 'Rớt tại Tầng 4 (Bỏ dở thanh toán)';
+                  }
+                  // Tầng 3: Thêm vào giỏ hàng
+                  else if (evSet.has('add_to_cart')) {
+                    u.hasStage3 = 1;
+                    u.hasStage2 = 1;
+                    u.statusLabel = 'Rớt tại Tầng 3 (Bỏ quên giỏ hàng)';
+                  }
+                  // Tầng 2: Xem / Tương tác sản phẩm (chọn màu / size / inseam / bundle)
+                  else if (
+                    evSet.has('view_item') ||
+                    evSet.has('customize_product') ||
+                    evSet.has('customize_inseam') ||
+                    evSet.has('select_bundle') ||
+                    evSet.has('review_interaction')
+                  ) {
+                    u.hasStage2 = 1;
+                    u.statusLabel = 'Rớt tại Tầng 2 (Xem nhưng chưa thêm giỏ)';
+                  }
+                  // Tầng 1: Chỉ ghé thăm trang rồi thoát
+                  else {
+                    u.statusLabel = 'Rớt tại Tầng 1 (Thoát ngay - Bounce)';
+                  }
+                });
+
+                // Tổng hợp dữ liệu phễu (u1 >= u2 >= u3 >= u4 >= u5 luôn đảm bảo tuyệt đối)
+                let u1 = 0;
+                let u2 = 0;
+                let u3 = 0;
+                let u4 = 0;
+                let u5 = 0;
+                let totalRevenue = 0;
+                let totalUnits = 0;
+                let totalUpsellClicks = 0;
+                let totalUpsellImpressions = 0;
+
+                const usersList = Array.from(userMap.values());
+
+                usersList.forEach((u) => {
+                  u1 += u.hasStage1;
+                  u2 += u.hasStage2;
+                  u3 += u.hasStage3;
+                  u4 += u.hasStage4;
+                  u5 += u.hasStage5;
+                  totalRevenue += u.revenue;
+                  totalUnits += u.units;
+                  totalUpsellClicks += u.hasUpsellClick;
+                  totalUpsellImpressions += u.hasUpsellImpression;
+                });
+
+                // Tỷ lệ chuyển đổi tổng thể (Overall CR)
+                const cr = u1 > 0 ? ((u5 / u1) * 100).toFixed(1) : '0.0';
+                const aov = u5 > 0 ? (totalRevenue / u5).toFixed(2) : '0.00';
+                const upt = u5 > 0 ? (totalUnits / u5).toFixed(1) : '0.0';
                 const upsellRate =
-                  upsellImpressions > 0 && upsellClicks > 0
-                    ? ((upsellClicks / upsellImpressions) * 100).toFixed(1)
+                  totalUpsellImpressions > 0
+                    ? ((totalUpsellClicks / totalUpsellImpressions) * 100).toFixed(1)
                     : '0.0';
 
-                const customizeCount = events.filter(
-                  (e) => e.eventName === 'customize_product'
-                ).length;
-                const cartCount = events.filter((e) => e.eventName === 'add_to_cart').length;
-                const checkoutCount = events.filter(
-                  (e) => e.eventName === 'begin_checkout'
-                ).length;
+                // Tỷ lệ so với đỉnh phễu (luôn nằm trong [0%, 100%], không bao giờ vượt 100% hay 200%)
+                const pct1 = u1 > 0 ? 100 : 0;
+                const pct2 = u1 > 0 ? Number(((u2 / u1) * 100).toFixed(1)) : 0;
+                const pct3 = u1 > 0 ? Number(((u3 / u1) * 100).toFixed(1)) : 0;
+                const pct4 = u1 > 0 ? Number(((u4 / u1) * 100).toFixed(1)) : 0;
+                const pct5 = u1 > 0 ? Number(((u5 / u1) * 100).toFixed(1)) : 0;
 
-                const funnelSteps = [
-                  {
-                    stage: '1. Truy cập Trang (PageView)',
-                    event: 'page_view',
-                    count: pageViews,
-                    rate: pageViews > 0 ? '100%' : '0%',
-                    note: 'Lưu lượng truy cập thực tế từ Ads / Direct',
-                  },
-                  {
-                    stage: '2. Tương tác & Chọn Size/Màu (ViewContent / Customize)',
-                    event: 'customize_product',
-                    count: customizeCount,
-                    rate:
-                      pageViews > 0
-                        ? `${((customizeCount / pageViews) * 100).toFixed(1)}%`
-                        : '0%',
-                    note: 'Khách chọn Dáng quần (Straight/Jogger), Màu sắc và Size chuẩn',
-                  },
-                  {
-                    stage: '3. Thêm vào Giỏ hàng (AddToCart)',
-                    event: 'add_to_cart',
-                    count: cartCount,
-                    rate:
-                      pageViews > 0 ? `${((cartCount / pageViews) * 100).toFixed(1)}%` : '0%',
-                    note: 'Chuyển đổi micro cốt lõi (Micro-CR: Add to Cart Rate)',
-                  },
-                  {
-                    stage: '4. Bắt đầu Thanh toán (InitiateCheckout)',
-                    event: 'begin_checkout',
-                    count: checkoutCount,
-                    rate:
-                      pageViews > 0
-                        ? `${((checkoutCount / pageViews) * 100).toFixed(1)}%`
-                        : '0%',
-                    note: 'Khách bấm Proceed To Checkout hoặc nút PayPal',
-                  },
-                  {
-                    stage: '5. Hoàn tất Đơn hàng (Purchase / CompletePayment)',
-                    event: 'purchase',
-                    count: purchaseCount,
-                    rate:
-                      pageViews > 0
-                        ? `${((purchaseCount / pageViews) * 100).toFixed(1)}%`
-                        : '0%',
-                    note: 'Ghi nhận doanh thu thực tế, gửi tín hiệu Conversion về Pixel',
-                  },
-                ];
+                // Tỷ lệ chuyển tiếp giữa các tầng liên tiếp (Step Conversion)
+                const conv1Pct = u1 > 0 ? ((u2 / u1) * 100).toFixed(1) : '0.0';
+                const drop1Count = u1 - u2;
+                const drop1Pct = u1 > 0 ? ((drop1Count / u1) * 100).toFixed(1) : '0.0';
+
+                const conv2Pct = u2 > 0 ? ((u3 / u2) * 100).toFixed(1) : '0.0';
+                const drop2Count = u2 - u3;
+                const drop2Pct = u2 > 0 ? ((drop2Count / u2) * 100).toFixed(1) : '0.0';
+
+                const conv3Pct = u3 > 0 ? ((u4 / u3) * 100).toFixed(1) : '0.0';
+                const drop3Count = u3 - u4;
+                const drop3Pct = u3 > 0 ? ((drop3Count / u3) * 100).toFixed(1) : '0.0';
+
+                const conv4Pct = u4 > 0 ? ((u5 / u4) * 100).toFixed(1) : '0.0';
+                const drop4Count = u4 - u5;
+                const drop4Pct = u4 > 0 ? ((drop4Count / u4) * 100).toFixed(1) : '0.0';
 
                 return (
                   <>
+                    {/* Top 4 KPI Metrics */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div className="bg-stone-950 p-4 rounded-xl border border-stone-800">
                         <div className="flex items-center justify-between text-xs text-stone-400">
@@ -504,9 +588,7 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
                         <div className="text-[11px] text-emerald-400 mt-1 flex items-center gap-1">
                           <TrendingUp className="w-3 h-3" />
                           <span>
-                            {purchaseCount > 0
-                              ? `${purchaseCount}/${pageViews} lượt mua`
-                              : 'Chưa có đơn hàng'}
+                            {u5 > 0 ? `${u5}/${u1} khách đã mua hàng` : 'Chưa có đơn hàng'}
                           </span>
                         </div>
                       </div>
@@ -520,7 +602,7 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
                           ${aov}
                         </div>
                         <div className="text-[11px] text-stone-400 mt-1">
-                          {purchaseCount > 0
+                          {u5 > 0
                             ? `Tổng DT: $${totalRevenue.toFixed(2)}`
                             : 'Chưa có doanh thu'}
                         </div>
@@ -535,7 +617,7 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
                           {upt} quần / đơn
                         </div>
                         <div className="text-[11px] text-cyan-400 mt-1">
-                          {purchaseCount > 0
+                          {u5 > 0
                             ? `Tổng đã bán: ${totalUnits} chiếc`
                             : 'Chưa có sản phẩm bán ra'}
                         </div>
@@ -550,8 +632,8 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
                           {upsellRate}%
                         </div>
                         <div className="text-[11px] text-stone-400 mt-1">
-                          {upsellImpressions > 0
-                            ? `${upsellClicks}/${upsellImpressions} lượt click ưu đãi`
+                          {totalUpsellImpressions > 0
+                            ? `${totalUpsellClicks}/${totalUpsellImpressions} khách click ưu đãi`
                             : 'Chưa mở giỏ hàng'}
                         </div>
                       </div>
@@ -563,16 +645,16 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
                         <div>
                           <h4 className="font-bold text-base text-white flex items-center gap-2">
                             <Filter className="w-5 h-5 text-emerald-400" />
-                            Sơ Đồ Phễu Chuyển Đổi Trực Quan (E-Commerce Visual Funnel)
+                            Sơ Đồ Phễu Chuyển Đổi Trực Quan (E-Commerce User Funnel)
                           </h4>
                           <p className="text-xs text-stone-400 mt-0.5">
-                            Hình phễu 5 tầng đo lường chính xác lượng khách qua từng bước & tỷ lệ rớt (Drop-off Rate)
+                            Quy tắc chuẩn: Mỗi User có thao tác ở tầng đó = <strong>+1</strong>, không thao tác = <strong>0</strong>. Tỷ lệ tối đa 100%, không bị ảo &gt; 100%.
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-mono text-stone-400">Tỷ lệ hoàn tất phễu:</span>
+                          <span className="text-xs font-mono text-stone-400">Tổng khách ghé thăm:</span>
                           <span className="px-2.5 py-1 text-xs font-mono font-bold bg-emerald-950/80 text-emerald-400 border border-emerald-500/30 rounded-lg">
-                            {cr}% CR
+                            {u1} User{u1 > 1 ? 's' : ''}
                           </span>
                         </div>
                       </div>
@@ -587,15 +669,15 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
                                 <Eye className="w-4 h-4" />
                               </div>
                               <div>
-                                <span className="text-emerald-400 font-mono text-[11px] uppercase mr-2">Tầng 1</span>
-                                <span className="font-semibold text-white">Truy cập Trang (PageView)</span>
+                                <span className="text-emerald-400 font-mono text-[11px] uppercase mr-2 font-bold">Tầng 1</span>
+                                <span className="font-semibold text-white">Khách Truy cập Trang (PageView / Visit)</span>
                               </div>
                             </div>
                             <div className="text-right">
                               <div className="font-mono font-black text-white text-base">
-                                {pageViews} <span className="text-xs text-stone-400 font-normal">lượt</span>
+                                {u1} <span className="text-xs text-stone-400 font-normal">khách (+1/user)</span>
                               </div>
-                              <span className="text-[11px] font-mono text-emerald-400 font-bold">100% (Đỉnh phễu)</span>
+                              <span className="text-[11px] font-mono text-emerald-400 font-bold">{pct1}% (Đỉnh phễu)</span>
                             </div>
                           </div>
                         </div>
@@ -605,15 +687,15 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
                           <div className="h-4 w-px bg-stone-700"></div>
                           <div className="flex items-center gap-2 px-3 py-1 bg-stone-900 border border-stone-800 rounded-full text-[11px] font-mono text-stone-300 shadow-sm">
                             <ArrowDown className="w-3 h-3 text-stone-400" />
-                            {pageViews > 0 ? (
+                            {u1 > 0 ? (
                               <>
                                 <span className="text-rose-400 font-bold">
-                                  -{(Math.max(0, 100 - (customizeCount / pageViews) * 100)).toFixed(1)}% Rớt
+                                  -{drop1Pct}% Rớt
                                 </span>
-                                <span className="text-stone-500">({Math.max(0, pageViews - customizeCount)} khách thoát)</span>
+                                <span className="text-stone-500">({drop1Count} khách thoát)</span>
                                 <span className="text-stone-600">|</span>
                                 <span className="text-emerald-400">
-                                  {pageViews > 0 ? ((customizeCount / pageViews) * 100).toFixed(1) : 0}% chuyển tiếp
+                                  {conv1Pct}% chuyển tiếp
                                 </span>
                               </>
                             ) : (
@@ -626,7 +708,7 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
                         {/* TẦNG 2: ViewContent / Customize */}
                         <div
                           style={{
-                            width: pageViews > 0 ? `${Math.max(48, Math.min(92, (customizeCount / pageViews) * 100))}%` : '85%',
+                            width: u1 > 0 ? `${Math.max(48, Math.min(100, pct2))}%` : '85%',
                           }}
                           className="bg-gradient-to-r from-cyan-950/80 via-cyan-900/40 to-cyan-950/80 border border-cyan-500/40 rounded-xl p-4 shadow-md transition-all hover:border-cyan-400 min-w-[280px]"
                         >
@@ -636,16 +718,16 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
                                 <Sliders className="w-4 h-4" />
                               </div>
                               <div>
-                                <span className="text-cyan-400 font-mono text-[11px] uppercase mr-2">Tầng 2</span>
-                                <span className="font-semibold text-white">Khám phá & Chọn Size / Màu</span>
+                                <span className="text-cyan-400 font-mono text-[11px] uppercase mr-2 font-bold">Tầng 2</span>
+                                <span className="font-semibold text-white">Xem & Tương tác Sản phẩm (Chọn Màu / Size / Inseam)</span>
                               </div>
                             </div>
                             <div className="text-right">
                               <div className="font-mono font-black text-white text-base">
-                                {customizeCount} <span className="text-xs text-stone-400 font-normal">lượt</span>
+                                {u2} <span className="text-xs text-stone-400 font-normal">khách (+1/user)</span>
                               </div>
                               <span className="text-[11px] font-mono text-cyan-400 font-bold">
-                                {pageViews > 0 ? ((customizeCount / pageViews) * 100).toFixed(1) : 0}% của tổng
+                                {pct2}% của tổng
                               </span>
                             </div>
                           </div>
@@ -656,15 +738,15 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
                           <div className="h-4 w-px bg-stone-700"></div>
                           <div className="flex items-center gap-2 px-3 py-1 bg-stone-900 border border-stone-800 rounded-full text-[11px] font-mono text-stone-300 shadow-sm">
                             <ArrowDown className="w-3 h-3 text-stone-400" />
-                            {customizeCount > 0 ? (
+                            {u2 > 0 ? (
                               <>
                                 <span className="text-rose-400 font-bold">
-                                  -{(Math.max(0, 100 - (cartCount / customizeCount) * 100)).toFixed(1)}% Rớt
+                                  -{drop2Pct}% Rớt
                                 </span>
-                                <span className="text-stone-500">({Math.max(0, customizeCount - cartCount)} xem không thêm giỏ)</span>
+                                <span className="text-stone-500">({drop2Count} xem không thêm giỏ)</span>
                                 <span className="text-stone-600">|</span>
                                 <span className="text-cyan-400">
-                                  {customizeCount > 0 ? ((cartCount / customizeCount) * 100).toFixed(1) : 0}% chuyển tiếp
+                                  {conv2Pct}% chuyển tiếp
                                 </span>
                               </>
                             ) : (
@@ -677,7 +759,7 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
                         {/* TẦNG 3: AddToCart */}
                         <div
                           style={{
-                            width: pageViews > 0 ? `${Math.max(42, Math.min(84, (cartCount / pageViews) * 100))}%` : '70%',
+                            width: u1 > 0 ? `${Math.max(40, Math.min(100, pct3))}%` : '70%',
                           }}
                           className="bg-gradient-to-r from-blue-950/80 via-blue-900/40 to-blue-950/80 border border-blue-500/40 rounded-xl p-4 shadow-md transition-all hover:border-blue-400 min-w-[260px]"
                         >
@@ -687,16 +769,16 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
                                 <ShoppingCart className="w-4 h-4" />
                               </div>
                               <div>
-                                <span className="text-blue-400 font-mono text-[11px] uppercase mr-2">Tầng 3</span>
+                                <span className="text-blue-400 font-mono text-[11px] uppercase mr-2 font-bold">Tầng 3</span>
                                 <span className="font-semibold text-white">Thêm vào Giỏ hàng (AddToCart)</span>
                               </div>
                             </div>
                             <div className="text-right">
                               <div className="font-mono font-black text-white text-base">
-                                {cartCount} <span className="text-xs text-stone-400 font-normal">lượt</span>
+                                {u3} <span className="text-xs text-stone-400 font-normal">khách (+1/user)</span>
                               </div>
                               <span className="text-[11px] font-mono text-blue-400 font-bold">
-                                {pageViews > 0 ? ((cartCount / pageViews) * 100).toFixed(1) : 0}% của tổng
+                                {pct3}% của tổng
                               </span>
                             </div>
                           </div>
@@ -707,15 +789,15 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
                           <div className="h-4 w-px bg-stone-700"></div>
                           <div className="flex items-center gap-2 px-3 py-1 bg-stone-900 border border-stone-800 rounded-full text-[11px] font-mono text-stone-300 shadow-sm">
                             <ArrowDown className="w-3 h-3 text-stone-400" />
-                            {cartCount > 0 ? (
+                            {u3 > 0 ? (
                               <>
                                 <span className="text-rose-400 font-bold">
-                                  -{(Math.max(0, 100 - (checkoutCount / cartCount) * 100)).toFixed(1)}% Rớt
+                                  -{drop3Pct}% Rớt
                                 </span>
-                                <span className="text-stone-500">({Math.max(0, cartCount - checkoutCount)} bỏ quên giỏ - Cart Abandonment)</span>
+                                <span className="text-stone-500">({drop3Count} bỏ quên giỏ hàng)</span>
                                 <span className="text-stone-600">|</span>
                                 <span className="text-indigo-400">
-                                  {cartCount > 0 ? ((checkoutCount / cartCount) * 100).toFixed(1) : 0}% chuyển tiếp
+                                  {conv3Pct}% chuyển tiếp
                                 </span>
                               </>
                             ) : (
@@ -728,7 +810,7 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
                         {/* TẦNG 4: InitiateCheckout */}
                         <div
                           style={{
-                            width: pageViews > 0 ? `${Math.max(36, Math.min(74, (checkoutCount / pageViews) * 100))}%` : '55%',
+                            width: u1 > 0 ? `${Math.max(34, Math.min(100, pct4))}%` : '55%',
                           }}
                           className="bg-gradient-to-r from-indigo-950/80 via-indigo-900/40 to-indigo-950/80 border border-indigo-500/40 rounded-xl p-4 shadow-md transition-all hover:border-indigo-400 min-w-[240px]"
                         >
@@ -738,16 +820,16 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
                                 <CreditCard className="w-4 h-4" />
                               </div>
                               <div>
-                                <span className="text-indigo-400 font-mono text-[11px] uppercase mr-2">Tầng 4</span>
-                                <span className="font-semibold text-white">Bắt đầu Thanh toán (Checkout)</span>
+                                <span className="text-indigo-400 font-mono text-[11px] uppercase mr-2 font-bold">Tầng 4</span>
+                                <span className="font-semibold text-white">Bắt đầu Thanh toán (Initiate Checkout)</span>
                               </div>
                             </div>
                             <div className="text-right">
                               <div className="font-mono font-black text-white text-base">
-                                {checkoutCount} <span className="text-xs text-stone-400 font-normal">lượt</span>
+                                {u4} <span className="text-xs text-stone-400 font-normal">khách (+1/user)</span>
                               </div>
                               <span className="text-[11px] font-mono text-indigo-400 font-bold">
-                                {pageViews > 0 ? ((checkoutCount / pageViews) * 100).toFixed(1) : 0}% của tổng
+                                {pct4}% của tổng
                               </span>
                             </div>
                           </div>
@@ -758,15 +840,15 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
                           <div className="h-4 w-px bg-stone-700"></div>
                           <div className="flex items-center gap-2 px-3 py-1 bg-stone-900 border border-stone-800 rounded-full text-[11px] font-mono text-stone-300 shadow-sm">
                             <ArrowDown className="w-3 h-3 text-stone-400" />
-                            {checkoutCount > 0 ? (
+                            {u4 > 0 ? (
                               <>
                                 <span className="text-rose-400 font-bold">
-                                  -{(Math.max(0, 100 - (purchaseCount / checkoutCount) * 100)).toFixed(1)}% Rớt
+                                  -{drop4Pct}% Rớt
                                 </span>
-                                <span className="text-stone-500">({Math.max(0, checkoutCount - purchaseCount)} hủy thanh toán)</span>
+                                <span className="text-stone-500">({drop4Count} hủy thanh toán)</span>
                                 <span className="text-stone-600">|</span>
                                 <span className="text-amber-400">
-                                  {checkoutCount > 0 ? ((purchaseCount / checkoutCount) * 100).toFixed(1) : 0}% thành công
+                                  {conv4Pct}% hoàn tất đơn
                                 </span>
                               </>
                             ) : (
@@ -779,7 +861,7 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
                         {/* TẦNG 5: Purchase (Đáy Phễu) */}
                         <div
                           style={{
-                            width: pageViews > 0 ? `${Math.max(30, Math.min(65, (purchaseCount / pageViews) * 100))}%` : '42%',
+                            width: u1 > 0 ? `${Math.max(28, Math.min(100, pct5))}%` : '42%',
                           }}
                           className="bg-gradient-to-r from-amber-950/90 via-emerald-950/60 to-amber-950/90 border-2 border-amber-500/60 rounded-xl p-4 shadow-xl shadow-amber-500/10 transition-all hover:border-amber-400 min-w-[220px]"
                         >
@@ -795,7 +877,7 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
                             </div>
                             <div className="text-right">
                               <div className="font-mono font-black text-amber-400 text-lg">
-                                {purchaseCount} <span className="text-xs text-stone-300 font-normal">đơn</span>
+                                {u5} <span className="text-xs text-stone-300 font-normal">khách mua (+1/user)</span>
                               </div>
                               <div className="text-[11px] font-mono text-emerald-400 font-bold">
                                 CR: {cr}% (${totalRevenue.toFixed(2)})
@@ -807,25 +889,25 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
 
                       {/* CHẨN ĐOÁN ĐIỂM NGHẼN (CRO FUNNEL BOTTLENECK DIAGNOSTICS) */}
                       {(() => {
-                        const drop1 = pageViews > 0 ? (pageViews - customizeCount) / pageViews : 0;
-                        const drop2 = customizeCount > 0 ? (customizeCount - cartCount) / customizeCount : 0;
-                        const drop3 = cartCount > 0 ? (cartCount - checkoutCount) / cartCount : 0;
-                        const drop4 = checkoutCount > 0 ? (checkoutCount - purchaseCount) / checkoutCount : 0;
+                        const d1 = u1 > 0 ? (u1 - u2) / u1 : 0;
+                        const d2 = u2 > 0 ? (u2 - u3) / u2 : 0;
+                        const d3 = u3 > 0 ? (u3 - u4) / u3 : 0;
+                        const d4 = u4 > 0 ? (u4 - u5) / u4 : 0;
 
                         let bottleneck = 'Chưa có đủ dữ liệu duyệt web để chẩn đoán';
                         let advice = 'Hãy thử chọn màu, chọn size, thêm giỏ và thanh toán để phễu phân tích điểm rơi rụng.';
-                        if (pageViews > 0) {
-                          const maxDrop = Math.max(drop1, drop2, drop3, drop4);
-                          if (maxDrop === drop3 && cartCount > 0) {
+                        if (u1 > 0) {
+                          const maxDrop = Math.max(d1, d2, d3, d4);
+                          if (maxDrop === d3 && u3 > 0) {
                             bottleneck = 'Điểm nghẽn lớn nhất: Giỏ hàng ➔ Bắt đầu Thanh toán (Cart Abandonment)';
                             advice = 'Khách thêm vào giỏ nhưng không bấm Checkout. Giải pháp: Thêm nút PayPal Express 1-click hoặc hiển thị rõ cam kết Miễn Phí Đổi Trả 30 ngày.';
-                          } else if (maxDrop === drop2 && customizeCount > 0) {
-                            bottleneck = 'Điểm nghẽn lớn nhất: Chọn Biến thể ➔ Thêm Giỏ hàng';
+                          } else if (maxDrop === d2 && u2 > 0) {
+                            bottleneck = 'Điểm nghẽn lớn nhất: Xem Sản phẩm ➔ Thêm Giỏ hàng';
                             advice = 'Khách chọn màu và size nhưng chần chừ bấm Add to Cart. Giải pháp: Nổi bật ưu đãi "Giảm 70% hôm nay" và đồng hồ đếm ngược kích cầu.';
-                          } else if (maxDrop === drop4 && checkoutCount > 0) {
+                          } else if (maxDrop === d4 && u4 > 0) {
                             bottleneck = 'Điểm nghẽn lớn nhất: Bắt đầu Checkout ➔ Hoàn tất Mua hàng';
                             advice = 'Khách mở form thanh toán nhưng bỏ dở. Giải pháp: Đơn giản hóa form, bổ sung huy hiệu bảo mật SSL và đa dạng cổng thanh toán.';
-                          } else if (maxDrop === drop1) {
+                          } else if (maxDrop === d1 && u1 > 0) {
                             bottleneck = 'Điểm nghẽn lớn nhất: Trang chủ ➔ Tương tác Chọn sản phẩm';
                             advice = 'Khách vừa vào đã thoát (Bounce). Giải pháp: Tối ưu hình ảnh Hero Banner, hiển thị ngay điểm số 4.9 sao và đánh giá thực tế của khách hàng.';
                           }
@@ -843,6 +925,145 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
                           </div>
                         );
                       })()}
+
+                      {/* BẢNG KIỂM CHỨNG THAO TÁC THEO TỪNG USER (+1 NẾU THAO TÁC, 0 NẾU KHÔNG) */}
+                      <div className="border-t border-stone-800 pt-5 space-y-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div>
+                            <h5 className="font-bold text-sm text-white flex items-center gap-2">
+                              <Users className="w-4 h-4 text-emerald-400" />
+                              Bảng Kiểm Chứng Thao Tác Từng User (User-Level Funnel Audit)
+                            </h5>
+                            <p className="text-xs text-stone-400 mt-0.5">
+                              Minh chứng công thức: Mỗi User chỉ nhận giá trị nhị phân <strong>+1</strong> (nếu có thao tác) hoặc <strong>0</strong> (nếu không thao tác).
+                            </p>
+                          </div>
+                          <span className="text-xs font-mono text-stone-400 bg-stone-900 px-2 py-1 rounded border border-stone-800">
+                            {usersList.length} User{usersList.length > 1 ? 's' : ''} đã ghi nhận
+                          </span>
+                        </div>
+
+                        <div className="bg-stone-900/60 rounded-xl border border-stone-800 overflow-x-auto">
+                          <table className="w-full text-left border-collapse text-xs whitespace-nowrap">
+                            <thead>
+                              <tr className="bg-stone-900 border-b border-stone-800 text-stone-400 uppercase text-[10px] font-mono tracking-wider">
+                                <th className="p-3">User ID</th>
+                                <th className="p-3 text-center">Tầng 1 (Vào trang)</th>
+                                <th className="p-3 text-center">Tầng 2 (Xem/chọn SP)</th>
+                                <th className="p-3 text-center">Tầng 3 (Thêm giỏ)</th>
+                                <th className="p-3 text-center">Tầng 4 (Checkout)</th>
+                                <th className="p-3 text-center">Tầng 5 (Mua hàng)</th>
+                                <th className="p-3 text-right">Tổng Chi ($)</th>
+                                <th className="p-3">Trạng thái phễu</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-stone-900 font-mono">
+                              {usersList.length === 0 ? (
+                                <tr>
+                                  <td colSpan={8} className="p-6 text-center text-stone-500 font-sans">
+                                    Chưa có dữ liệu người dùng. Thao tác trên web (chọn màu, thêm giỏ, thanh toán) để kiểm chứng phễu.
+                                  </td>
+                                </tr>
+                              ) : (
+                                usersList.map((u) => (
+                                  <tr key={u.userId} className="hover:bg-stone-900/40 transition-colors">
+                                    <td className="p-3 text-emerald-400 font-bold text-[11px] flex items-center gap-1.5">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                                      {u.userId}
+                                      {u.userId === tracker.getUserId() && (
+                                        <span className="ml-1 text-[9px] bg-emerald-950 text-emerald-300 border border-emerald-800 px-1 rounded font-normal font-sans">
+                                          (Hiện tại)
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="p-3 text-center">
+                                      <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-950/80 text-emerald-400 border border-emerald-500/40">
+                                        +1
+                                      </span>
+                                    </td>
+                                    <td className="p-3 text-center">
+                                      {u.hasStage2 > 0 ? (
+                                        <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-cyan-950/80 text-cyan-400 border border-cyan-500/40">
+                                          +1
+                                        </span>
+                                      ) : (
+                                        <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-stone-900 text-stone-600">
+                                          0
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="p-3 text-center">
+                                      {u.hasStage3 > 0 ? (
+                                        <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-blue-950/80 text-blue-400 border border-blue-500/40">
+                                          +1
+                                        </span>
+                                      ) : (
+                                        <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-stone-900 text-stone-600">
+                                          0
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="p-3 text-center">
+                                      {u.hasStage4 > 0 ? (
+                                        <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-indigo-950/80 text-indigo-400 border border-indigo-500/40">
+                                          +1
+                                        </span>
+                                      ) : (
+                                        <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-stone-900 text-stone-600">
+                                          0
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="p-3 text-center">
+                                      {u.hasStage5 > 0 ? (
+                                        <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-950/80 text-amber-400 border border-amber-500/40">
+                                          +1
+                                        </span>
+                                      ) : (
+                                        <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-stone-900 text-stone-600">
+                                          0
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="p-3 text-right font-bold text-white">
+                                      {u.revenue > 0 ? `$${u.revenue.toFixed(2)}` : '-'}
+                                    </td>
+                                    <td className="p-3 font-sans text-xs">
+                                      <span
+                                        className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                                          u.hasStage5 > 0
+                                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                                            : u.hasStage3 > 0
+                                            ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
+                                            : 'bg-stone-800 text-stone-400'
+                                        }`}
+                                      >
+                                        {u.statusLabel}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                ))
+                              )}
+                            </tbody>
+                            {usersList.length > 0 && (
+                              <tfoot>
+                                <tr className="bg-stone-900/90 font-bold text-stone-200 border-t border-stone-700 text-xs">
+                                  <td className="p-3 text-emerald-400">TỔNG USER ĐẠT (+1/người)</td>
+                                  <td className="p-3 text-center text-emerald-400">{u1} ({pct1}%)</td>
+                                  <td className="p-3 text-center text-cyan-400">{u2} ({pct2}%)</td>
+                                  <td className="p-3 text-center text-blue-400">{u3} ({pct3}%)</td>
+                                  <td className="p-3 text-center text-indigo-400">{u4} ({pct4}%)</td>
+                                  <td className="p-3 text-center text-amber-400">{u5} ({pct5}%)</td>
+                                  <td className="p-3 text-right text-emerald-400">${totalRevenue.toFixed(2)}</td>
+                                  <td className="p-3 text-stone-400 font-sans text-[11px]">
+                                    CR Đáy Phễu: {cr}%
+                                  </td>
+                                </tr>
+                              </tfoot>
+                            )}
+                          </table>
+                        </div>
+                      </div>
                     </div>
                   </>
                 );
