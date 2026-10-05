@@ -13,6 +13,8 @@ export interface CartItem {
 export interface TrackingEventRecord {
   id: string;
   timestamp: string;
+  userId: string;
+  sessionId: string;
   eventName: string;
   category: 'ecommerce' | 'engagement' | 'lead' | 'custom';
   platforms: ('gtm' | 'ga4' | 'meta' | 'tiktok')[];

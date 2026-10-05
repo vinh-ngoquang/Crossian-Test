@@ -30,11 +30,83 @@ const listeners: Set<TrackingListener> = new Set();
 class TrackingService {
   private config: PixelConfig;
   private events: TrackingEventRecord[] = [];
+  private userId: string;
+  private sessionId: string;
+  private sessionNumber: number;
 
   constructor() {
     this.config = this.loadConfig();
+    const identity = this.initIdentity();
+    this.userId = identity.userId;
+    this.sessionId = identity.sessionId;
+    this.sessionNumber = identity.sessionNumber;
     this.events = this.loadEvents();
     this.initializeScripts();
+  }
+
+  private initIdentity(): { userId: string; sessionId: string; sessionNumber: number } {
+    let uid = '';
+    let sid = '';
+    let sNum = 1;
+
+    try {
+      uid = localStorage.getItem('sa_analytics_user_id') || '';
+      if (!uid) {
+        uid = `usr_${Math.random().toString(36).substring(2, 9)}_${Date.now().toString(36)}`;
+        localStorage.setItem('sa_analytics_user_id', uid);
+      }
+
+      sNum = parseInt(localStorage.getItem('sa_session_number') || '1', 10);
+      const lastSessionTs = parseInt(sessionStorage.getItem('sa_session_timestamp') || '0', 10);
+      const now = Date.now();
+      const thirtyMins = 30 * 60 * 1000;
+
+      sid = sessionStorage.getItem('sa_analytics_session_id') || '';
+      if (!sid || (lastSessionTs && now - lastSessionTs > thirtyMins)) {
+        sid = `sess_${Math.random().toString(36).substring(2, 8)}_${Date.now().toString(36)}`;
+        sessionStorage.setItem('sa_analytics_session_id', sid);
+        sNum = lastSessionTs ? sNum + 1 : sNum;
+        localStorage.setItem('sa_session_number', sNum.toString());
+      }
+      sessionStorage.setItem('sa_session_timestamp', now.toString());
+    } catch {
+      uid = `usr_${Math.random().toString(36).substring(2, 9)}`;
+      sid = `sess_${Math.random().toString(36).substring(2, 8)}`;
+    }
+
+    return { userId: uid, sessionId: sid, sessionNumber: sNum };
+  }
+
+  public getUserId(): string {
+    return this.userId;
+  }
+
+  public getSessionId(): string {
+    return this.sessionId;
+  }
+
+  public setUserId(customId: string) {
+    if (!customId) return;
+    this.userId = customId;
+    try {
+      localStorage.setItem('sa_analytics_user_id', customId);
+    } catch {}
+    this.dispatch('identify_user', 'lead', ['gtm', 'ga4', 'meta'], {
+      user_id: this.userId,
+      session_id: this.sessionId,
+    });
+  }
+
+  public renewSession(): string {
+    const newSid = `sess_${Math.random().toString(36).substring(2, 8)}_${Date.now().toString(36)}`;
+    this.sessionId = newSid;
+    this.sessionNumber += 1;
+    try {
+      sessionStorage.setItem('sa_analytics_session_id', newSid);
+      sessionStorage.setItem('sa_session_timestamp', Date.now().toString());
+      localStorage.setItem('sa_session_number', this.sessionNumber.toString());
+    } catch {}
+    return newSid;
   }
 
   public getConfig(): PixelConfig {
@@ -138,13 +210,27 @@ class TrackingService {
     const timestamp = new Date().toLocaleTimeString();
     const id = `${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
 
+    // Keep session active
+    try {
+      sessionStorage.setItem('sa_session_timestamp', Date.now().toString());
+    } catch {}
+
+    const enrichedPayload = {
+      user_id: this.userId,
+      session_id: this.sessionId,
+      session_number: this.sessionNumber,
+      ...payload,
+    };
+
     const eventRecord: TrackingEventRecord = {
       id,
       timestamp,
+      userId: this.userId,
+      sessionId: this.sessionId,
       eventName,
       category,
       platforms,
-      payload: { ...payload },
+      payload: enrichedPayload,
     };
 
     // 1. Google Tag Manager (DataLayer)
@@ -154,7 +240,7 @@ class TrackingService {
         event: eventName,
         ecommerce: payload.ecommerce || payload,
         timestamp: new Date().toISOString(),
-        ...payload,
+        ...enrichedPayload,
       };
       window.dataLayer.push(gtmPayload);
       if (this.config.debugMode) {
@@ -165,9 +251,9 @@ class TrackingService {
     // 2. Google Analytics 4 (gtag)
     if (platforms.includes('ga4') && typeof window !== 'undefined' && typeof window.gtag === 'function') {
       try {
-        window.gtag('event', eventName, payload);
+        window.gtag('event', eventName, enrichedPayload);
         if (this.config.debugMode) {
-          console.log(`[GA4 gtag event]`, eventName, payload);
+          console.log(`[GA4 gtag event]`, eventName, enrichedPayload);
         }
       } catch (e) {
         console.error('GA4 dispatch error', e);
@@ -191,6 +277,7 @@ class TrackingService {
 
         const metaEvent = metaEventMap[eventName] || eventName;
         window.fbq('track', metaEvent, {
+          external_id: this.userId,
           content_name: payload.content_name || payload.item_name || 'Ultra-Stretch Ice Silk Pants',
           content_category: payload.content_category || 'Apparel & Accessories > Clothing > Pants',
           content_ids: payload.content_ids || [payload.item_id || 'SA-ICESILK-001'],
@@ -198,11 +285,11 @@ class TrackingService {
           value: payload.value || 0,
           currency: payload.currency || 'USD',
           num_items: payload.quantity || payload.num_items || 1,
-          ...payload,
+          ...enrichedPayload,
         });
 
         if (this.config.debugMode) {
-          console.log(`[Meta fbq track]`, metaEvent, payload);
+          console.log(`[Meta fbq track]`, metaEvent, enrichedPayload);
         }
       } catch (e) {
         console.error('Meta Pixel dispatch error', e);
@@ -222,6 +309,7 @@ class TrackingService {
         };
         const ttEvent = ttEventMap[eventName] || eventName;
         window.ttq.track(ttEvent, {
+          external_id: this.userId,
           content_id: payload.item_id || 'SA-ICESILK-001',
           content_type: 'product',
           content_name: payload.content_name || payload.item_name || 'Ultra-Stretch Ice Silk Pants',
@@ -229,11 +317,11 @@ class TrackingService {
           price: payload.value || 39.95,
           value: payload.value || 39.95,
           currency: payload.currency || 'USD',
-          ...payload,
+          ...enrichedPayload,
         });
 
         if (this.config.debugMode) {
-          console.log(`[TikTok ttq.track]`, ttEvent, payload);
+          console.log(`[TikTok ttq.track]`, ttEvent, enrichedPayload);
         }
       } catch (e) {
         console.error('TikTok dispatch error', e);

@@ -7,6 +7,7 @@ import {
   BarChart3,
   CheckCircle2,
   Copy,
+  Download,
   ExternalLink,
   Flame,
   Info,
@@ -17,6 +18,7 @@ import {
   Settings,
   ShieldCheck,
   ShoppingCart,
+  Table,
   Terminal,
   Trash2,
   TrendingUp,
@@ -31,10 +33,36 @@ interface Props {
 
 export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => {
   const [activeTab, setActiveTab] = useState<'events' | 'analytics' | 'config' | 'guide'>('analytics');
+  const [eventViewMode, setEventViewMode] = useState<'table' | 'json'>('table');
   const [events, setEvents] = useState<TrackingEventRecord[]>([]);
   const [config, setConfig] = useState<PixelConfig>(tracker.getConfig());
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<TrackingEventRecord | null>(null);
+
+  const handleExportCsv = () => {
+    if (events.length === 0) return;
+    const headers = ['Timestamp', 'User_ID', 'Session_ID', 'Event_Name', 'Category', 'Platforms', 'Value_USD', 'Quantity', 'Details_JSON'];
+    const rows = events.map((e) => [
+      `"${new Date(e.timestamp).toLocaleTimeString()}"`,
+      `"${e.userId || tracker.getUserId()}"`,
+      `"${e.sessionId || tracker.getSessionId()}"`,
+      `"${e.eventName}"`,
+      `"${e.category}"`,
+      `"${e.platforms.join('+')}"`,
+      e.payload.value || e.payload.price || 0,
+      e.payload.quantity || e.payload.num_items || 1,
+      `"${JSON.stringify(e.payload).replace(/"/g, '""')}"`,
+    ]);
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `tracking_events_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   useEffect(() => {
     const unsubscribe = tracker.subscribe((updatedEvents) => {
@@ -158,31 +186,51 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
 
         {/* Status badges bar */}
         <div className="px-6 py-2.5 bg-stone-950/90 border-b border-stone-800/80 flex flex-wrap items-center justify-between text-xs gap-3">
-          <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-1.5 bg-stone-900 border border-stone-800 px-2.5 py-1 rounded-md text-[11px]">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              <span className="text-stone-400 font-mono">User_ID:</span>
+              <span className="text-emerald-400 font-mono font-bold">{tracker.getUserId()}</span>
+            </div>
+            <div className="flex items-center gap-1.5 bg-stone-900 border border-stone-800 px-2.5 py-1 rounded-md text-[11px]">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+              <span className="text-stone-400 font-mono">Session_ID:</span>
+              <span className="text-cyan-400 font-mono font-bold">{tracker.getSessionId()}</span>
+              <button
+                onClick={() => {
+                  tracker.renewSession();
+                  setEvents(tracker.getEvents());
+                }}
+                className="ml-1 text-[10px] text-stone-400 hover:text-white underline cursor-pointer"
+                title="Tạo phiên mới để kiểm tra phân biệt session"
+              >
+                (Đổi session)
+              </button>
+            </div>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-              <span className="text-stone-400 font-mono">GTM DataLayer:</span>
+              <span className="text-stone-400 font-mono">GTM:</span>
               <span className="text-white font-mono bg-stone-800 px-1.5 py-0.5 rounded">{config.gtmId}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-              <span className="text-stone-400 font-mono">GA4 Measurement:</span>
+              <span className="text-stone-400 font-mono">GA4:</span>
               <span className="text-white font-mono bg-stone-800 px-1.5 py-0.5 rounded">{config.ga4Id}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-blue-400"></span>
-              <span className="text-stone-400 font-mono">Meta Pixel:</span>
+              <span className="text-stone-400 font-mono">Meta:</span>
               <span className="text-white font-mono bg-stone-800 px-1.5 py-0.5 rounded">{config.metaPixelId}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-pink-400"></span>
-              <span className="text-stone-400 font-mono">TikTok Pixel:</span>
+              <span className="text-stone-400 font-mono">TikTok:</span>
               <span className="text-white font-mono bg-stone-800 px-1.5 py-0.5 rounded">{config.tiktokPixelId}</span>
             </div>
           </div>
 
           <div className="text-stone-400 font-mono">
-            Tổng sự kiện ghi nhận: <span className="text-emerald-400 font-bold">{events.length}</span>
+            Tổng sự kiện: <span className="text-emerald-400 font-bold">{events.length}</span>
           </div>
         </div>
 
@@ -433,128 +481,257 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
           )}
 
           {activeTab === 'events' && (
-            <div className="h-full flex flex-col md:flex-row gap-6 overflow-hidden">
-              {/* Left: Event Stream List */}
-              <div className="w-full md:w-5/12 flex flex-col h-full bg-stone-950 rounded-xl border border-stone-800 overflow-hidden">
-                <div className="p-3 border-b border-stone-800 bg-stone-900/40 flex items-center justify-between text-xs">
-                  <span className="font-semibold text-stone-300">Dòng sự kiện (Mới nhất ở trên)</span>
-                  <div className="flex items-center gap-1.5">
+            <div className="h-full flex flex-col gap-4 overflow-hidden">
+              {/* Controls bar: Toggle Table/JSON + Export CSV + Test buttons */}
+              <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-stone-950 rounded-xl border border-stone-800 text-xs shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center bg-stone-900 p-1 rounded-lg border border-stone-800">
                     <button
-                      onClick={() => handleTestEvent('view_item')}
-                      className="px-2 py-0.5 bg-stone-800 hover:bg-stone-700 text-stone-300 rounded text-[11px]"
+                      onClick={() => setEventViewMode('table')}
+                      className={`px-3 py-1 rounded text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                        eventViewMode === 'table'
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'text-stone-400 hover:text-white'
+                      }`}
                     >
-                      + View
+                      <Table className="w-3.5 h-3.5" />
+                      <span>Dạng Bảng (Table View)</span>
                     </button>
                     <button
-                      onClick={() => handleTestEvent('add_to_cart')}
-                      className="px-2 py-0.5 bg-stone-800 hover:bg-stone-700 text-emerald-400 rounded text-[11px]"
+                      onClick={() => setEventViewMode('json')}
+                      className={`px-3 py-1 rounded text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                        eventViewMode === 'json'
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'text-stone-400 hover:text-white'
+                      }`}
                     >
-                      + Cart
-                    </button>
-                    <button
-                      onClick={() => handleTestEvent('purchase')}
-                      className="px-2 py-0.5 bg-emerald-700 hover:bg-emerald-600 text-white font-semibold rounded text-[11px]"
-                    >
-                      + Purchase
+                      <Terminal className="w-3.5 h-3.5" />
+                      <span>Dạng JSON Tree</span>
                     </button>
                   </div>
+
+                  <button
+                    onClick={handleExportCsv}
+                    className="px-3 py-1.5 bg-stone-800 hover:bg-stone-700 text-stone-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 border border-stone-700 transition-colors cursor-pointer"
+                    title="Tải về file Excel / CSV dạng bảng"
+                  >
+                    <Download className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Xuất file Excel / CSV</span>
+                  </button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto divide-y divide-stone-900/60 p-2 space-y-1">
-                  {events.length === 0 ? (
-                    <div className="p-8 text-center text-stone-500 text-sm">
-                      Chưa có sự kiện nào. Hãy tương tác với trang (chọn màu, chọn size, thêm giỏ, thanh toán) để kiểm tra tracking!
-                    </div>
-                  ) : (
-                    events.map((evt) => {
-                      const isSelected = selectedEvent?.id === evt.id;
-                      return (
-                        <div
-                          key={evt.id}
-                          onClick={() => setSelectedEvent(evt)}
-                          className={`p-2.5 rounded-lg cursor-pointer transition-all ${
-                            isSelected
-                              ? 'bg-emerald-950/40 border border-emerald-500/40 text-white'
-                              : 'hover:bg-stone-900/80 text-stone-300 border border-transparent'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="font-mono font-semibold text-xs text-emerald-400">
-                              {evt.eventName}
-                            </span>
-                            <span className="text-[11px] font-mono text-stone-500">{evt.timestamp}</span>
-                          </div>
-
-                          <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                            {evt.platforms.map((p) => (
-                              <span
-                                key={p}
-                                className={`text-[10px] uppercase font-mono px-1.5 py-0.2 rounded font-medium ${
-                                  p === 'gtm'
-                                    ? 'bg-amber-950 text-amber-300 border border-amber-800'
-                                    : p === 'ga4'
-                                    ? 'bg-orange-950 text-orange-300 border border-orange-800'
-                                    : p === 'meta'
-                                    ? 'bg-blue-950 text-blue-300 border border-blue-800'
-                                    : 'bg-pink-950 text-pink-300 border border-pink-800'
-                                }`}
-                              >
-                                {p}
-                              </span>
-                            ))}
-                            {evt.payload.value !== undefined && (
-                              <span className="text-[11px] font-mono text-emerald-300 ml-auto font-bold">
-                                ${evt.payload.value} {evt.payload.currency || 'USD'}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-stone-500 text-[11px] hidden sm:inline">Bắn test:</span>
+                  <button
+                    onClick={() => handleTestEvent('view_item')}
+                    className="px-2 py-1 bg-stone-800 hover:bg-stone-700 text-stone-300 rounded text-xs cursor-pointer"
+                  >
+                    + View
+                  </button>
+                  <button
+                    onClick={() => handleTestEvent('add_to_cart')}
+                    className="px-2 py-1 bg-stone-800 hover:bg-stone-700 text-emerald-400 rounded text-xs cursor-pointer"
+                  >
+                    + Cart
+                  </button>
+                  <button
+                    onClick={() => handleTestEvent('purchase')}
+                    className="px-2 py-1 bg-emerald-700 hover:bg-emerald-600 text-white font-semibold rounded text-xs cursor-pointer"
+                  >
+                    + Purchase
+                  </button>
                 </div>
               </div>
 
-              {/* Right: Event Payload Details */}
-              <div className="w-full md:w-7/12 flex flex-col h-full bg-stone-950 rounded-xl border border-stone-800 overflow-hidden">
-                {selectedEvent ? (
-                  <>
-                    <div className="p-4 border-b border-stone-800 bg-stone-900/60 flex items-center justify-between">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-base font-bold text-white">
-                            {selectedEvent.eventName}
-                          </span>
-                          <span className="text-xs font-mono text-stone-400">({selectedEvent.timestamp})</span>
+              {/* TABLE VIEW (Dạng Bảng Phân Tích Chuẩn Excel / Sheets) */}
+              {eventViewMode === 'table' ? (
+                <div className="flex-1 bg-stone-950 rounded-xl border border-stone-800 overflow-hidden flex flex-col">
+                  <div className="overflow-x-auto flex-1">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-stone-900 border-b border-stone-800 text-stone-400 uppercase text-[10px] font-mono tracking-wider sticky top-0">
+                          <th className="p-3">Thời gian</th>
+                          <th className="p-3">User ID</th>
+                          <th className="p-3">Session ID</th>
+                          <th className="p-3">Sự kiện (Event)</th>
+                          <th className="p-3">Danh mục</th>
+                          <th className="p-3">Chi tiết / Sản phẩm</th>
+                          <th className="p-3">Số lượng</th>
+                          <th className="p-3">Giá trị ($)</th>
+                          <th className="p-3">Nền tảng đồng bộ</th>
+                          <th className="p-3 text-right">Xem JSON</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-stone-900 font-mono">
+                        {events.length === 0 ? (
+                          <tr>
+                            <td colSpan={10} className="p-8 text-center text-stone-500 font-sans">
+                              Chưa có sự kiện nào. Hãy tương tác với trang (chọn màu, chọn size, thêm giỏ, thanh toán) để kiểm tra tracking!
+                            </td>
+                          </tr>
+                        ) : (
+                          events.map((evt) => {
+                            const val = evt.payload.value || evt.payload.price || 0;
+                            const qty = evt.payload.quantity || evt.payload.num_items || '-';
+                            const detailText =
+                              evt.payload.item_name ||
+                              evt.payload.content_name ||
+                              evt.payload.offer_title ||
+                              evt.payload.customization_value ||
+                              evt.payload.page_title ||
+                              '-';
+
+                            return (
+                              <tr key={evt.id} className="hover:bg-stone-900/60 transition-colors">
+                                <td className="p-3 text-stone-400 whitespace-nowrap text-[11px]">
+                                  {evt.timestamp}
+                                </td>
+                                <td className="p-3 whitespace-nowrap text-[11px] font-mono text-emerald-400 font-bold">
+                                  {evt.userId || tracker.getUserId()}
+                                </td>
+                                <td className="p-3 whitespace-nowrap text-[11px] font-mono text-cyan-400">
+                                  {evt.sessionId || tracker.getSessionId()}
+                                </td>
+                                <td className="p-3 whitespace-nowrap">
+                                  <span className="font-bold text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/30">
+                                    {evt.eventName}
+                                  </span>
+                                </td>
+                                <td className="p-3 text-stone-300 capitalize font-sans">{evt.category}</td>
+                                <td className="p-3 text-stone-200 max-w-[200px] truncate font-sans" title={String(detailText)}>
+                                  {String(detailText)}
+                                </td>
+                                <td className="p-3 text-stone-300">{qty}</td>
+                                <td className="p-3 font-bold text-stone-100">
+                                  {val > 0 ? `$${Number(val).toFixed(2)}` : '-'}
+                                </td>
+                                <td className="p-3 whitespace-nowrap">
+                                  <div className="flex items-center gap-1">
+                                    {evt.platforms.map((p) => (
+                                      <span
+                                        key={p}
+                                        className="text-[9px] uppercase px-1 py-0.2 rounded font-bold bg-stone-800 text-stone-300"
+                                      >
+                                        {p}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </td>
+                                <td className="p-3 text-right">
+                                  <button
+                                    onClick={() => {
+                                      setSelectedEvent(evt);
+                                      setEventViewMode('json');
+                                    }}
+                                    className="text-emerald-400 hover:text-emerald-300 underline text-[11px] cursor-pointer"
+                                  >
+                                    Chi tiết
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : (
+                /* JSON TREE VIEW */
+                <div className="flex-1 flex flex-col md:flex-row gap-6 overflow-hidden">
+                  {/* Left: Event Stream List */}
+                  <div className="w-full md:w-5/12 flex flex-col h-full bg-stone-950 rounded-xl border border-stone-800 overflow-hidden">
+                    <div className="flex-1 overflow-y-auto divide-y divide-stone-900/60 p-2 space-y-1">
+                      {events.map((evt) => {
+                        const isSelected = selectedEvent?.id === evt.id;
+                        return (
+                          <div
+                            key={evt.id}
+                            onClick={() => setSelectedEvent(evt)}
+                            className={`p-2.5 rounded-lg cursor-pointer transition-all ${
+                              isSelected
+                                ? 'bg-emerald-950/40 border border-emerald-500/40 text-white'
+                                : 'hover:bg-stone-900/80 text-stone-300 border border-transparent'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-mono font-semibold text-xs text-emerald-400">
+                                {evt.eventName}
+                              </span>
+                              <span className="text-[11px] font-mono text-stone-500">{evt.timestamp}</span>
+                            </div>
+
+                            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                              {evt.platforms.map((p) => (
+                                <span
+                                  key={p}
+                                  className={`text-[10px] uppercase font-mono px-1.5 py-0.2 rounded font-medium ${
+                                    p === 'gtm'
+                                      ? 'bg-amber-950 text-amber-300 border border-amber-800'
+                                      : p === 'ga4'
+                                      ? 'bg-orange-950 text-orange-300 border border-orange-800'
+                                      : p === 'meta'
+                                      ? 'bg-blue-950 text-blue-300 border border-blue-800'
+                                      : 'bg-pink-950 text-pink-300 border border-pink-800'
+                                  }`}
+                                >
+                                  {p}
+                                </span>
+                              ))}
+                              {evt.payload.value !== undefined && (
+                                <span className="text-[11px] font-mono text-emerald-300 ml-auto font-bold">
+                                  ${evt.payload.value} {evt.payload.currency || 'USD'}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Right: Event Payload Details */}
+                  <div className="w-full md:w-7/12 flex flex-col h-full bg-stone-950 rounded-xl border border-stone-800 overflow-hidden">
+                    {selectedEvent ? (
+                      <>
+                        <div className="p-4 border-b border-stone-800 bg-stone-900/60 flex items-center justify-between">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-base font-bold text-white">
+                                {selectedEvent.eventName}
+                              </span>
+                              <span className="text-xs font-mono text-stone-400">({selectedEvent.timestamp})</span>
+                            </div>
+                            <p className="text-xs text-stone-400 mt-0.5">
+                              Đã phát sóng tới: {selectedEvent.platforms.join(', ').toUpperCase()}
+                            </p>
+                          </div>
+
+                          <button
+                            onClick={() =>
+                              handleCopy(JSON.stringify(selectedEvent.payload, null, 2), selectedEvent.id)
+                            }
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-stone-800 hover:bg-stone-700 text-stone-200 rounded-lg transition-colors border border-stone-700 cursor-pointer"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                            {copiedId === selectedEvent.id ? 'Đã chép JSON!' : 'Copy Payload'}
+                          </button>
                         </div>
-                        <p className="text-xs text-stone-400 mt-0.5">
-                          Đã phát sóng tới: {selectedEvent.platforms.join(', ').toUpperCase()}
-                        </p>
+
+                        <div className="flex-1 p-4 overflow-y-auto font-mono text-xs text-emerald-300 bg-stone-950">
+                          <pre className="whitespace-pre-wrap leading-relaxed">
+                            {JSON.stringify(selectedEvent.payload, null, 2)}
+                          </pre>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="h-full flex items-center justify-center text-stone-500 text-sm">
+                        Chọn một sự kiện từ danh sách bên trái để xem chi tiết payload dữ liệu
                       </div>
-
-                      <button
-                        onClick={() =>
-                          handleCopy(JSON.stringify(selectedEvent.payload, null, 2), selectedEvent.id)
-                        }
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-stone-800 hover:bg-stone-700 text-stone-200 rounded-lg transition-colors border border-stone-700"
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                        {copiedId === selectedEvent.id ? 'Đã chép JSON!' : 'Copy Payload'}
-                      </button>
-                    </div>
-
-                    <div className="flex-1 p-4 overflow-y-auto font-mono text-xs text-emerald-300 bg-stone-950">
-                      <pre className="whitespace-pre-wrap leading-relaxed">
-                        {JSON.stringify(selectedEvent.payload, null, 2)}
-                      </pre>
-                    </div>
-                  </>
-                ) : (
-                  <div className="h-full flex items-center justify-center text-stone-500 text-sm">
-                    Chọn một sự kiện từ danh sách bên trái để xem chi tiết payload dữ liệu
+                    )}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           )}
 
