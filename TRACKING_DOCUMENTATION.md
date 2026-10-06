@@ -13,7 +13,7 @@ Dự án xác định **cặp chỉ số song hành North Star** làm kim chỉ 
 $$\text{Doanh Thu Kỳ Vọng / Lượt Ghé Thăm (RPV)} = \mathbf{CR} \times \mathbf{AOV}$$
 
 * **CR (Conversion Rate - Tỷ lệ chuyển đổi):** Đo lường năng lực thuyết phục của Landing Page trong việc biến một lượt ghé thăm (Visitor) thành người mua hàng thực tế (Buyer).
-* **AOV (Average Order Value - Giá trị đơn hàng trung bình):** Đo lường quy mô giá trị kinh tế trung bình của mỗi đơn hàng, phản ánh hiệu quả của chính sách kích cầu mua nhiều quần (*Buy More Save More: Mua chiếc tiếp theo giảm thêm 25% & Miễn phí vận chuyển từ $50*) 
+* **AOV (Average Order Value - Giá trị đơn hàng trung bình):** Đo lường quy mô giá trị kinh tế trung bình của mỗi đơn hàng, phản ánh hiệu quả của chính sách kích cầu mua nhiều quần (*Buy More Save More: Mua chiếc tiếp theo giảm thêm 25% *) 
 
 ---
 
