@@ -1,4 +1,7 @@
+> 🌐 **Link demo thực tế:** [https://crossian-test-six.vercel.app/](https://crossian-test-six.vercel.app/)
+
 # TÀI LIỆU KẾ HOẠCH TRACKING & PHÂN TÍCH HÀNH VI NGƯỜI DÙNG
+**Link demo thực tế:** [https://crossian-test-six.vercel.app/](https://crossian-test-six.vercel.app/)  
 **Dự án:** StretchActive™ Ultra-Stretch Ice Silk Pants (D2C E-Commerce Landing Page)  
 **Vai trò:** Tài liệu Đặc tả Dữ liệu Dành cho Data Analyst / Business Analyst  
 **Phiên bản:** v2.1 (Cập nhật chính xác cơ chế Mua Nhiều Giảm Giá - Buy More Save More)  
