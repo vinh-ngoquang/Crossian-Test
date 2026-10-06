@@ -100,10 +100,10 @@ class TrackingService {
     // Initial server sync to fetch all events accumulated across all users
     this.syncWithServer();
 
-    // Poll every 3s to live stream events from other people who visit
+    // Poll every 2s to live stream events from other people who visit
     this.syncInterval = setInterval(() => {
       this.fetchLatestServerEvents();
-    }, 3000);
+    }, 2000);
   }
 
   public async syncWithServer() {
@@ -120,9 +120,11 @@ class TrackingService {
         if (data.success && Array.isArray(data.events)) {
           this.mergeEvents(data.events);
         }
+      } else {
+        await this.fetchLatestServerEvents();
       }
     } catch {
-      // Offline fallback: keep local events
+      await this.fetchLatestServerEvents();
     } finally {
       this.isSyncing = false;
     }
