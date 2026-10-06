@@ -10,10 +10,8 @@ export const TRACKING_DOCUMENTATION_MD = `# TÀI LIỆU KẾ HOẠCH TRACKING & 
 ### 1. Cặp Chỉ Số North Star (North Star Metrics)
 Dự án xác định **cặp chỉ số song hành North Star** làm kim chỉ nam đo lường hiệu quả kinh doanh của toàn bộ Landing Page:
 
-Doanh Thu Kỳ Vọng / Lượt Ghé Thăm (RPV) = CR × AOV
-
 * **CR (Conversion Rate - Tỷ lệ chuyển đổi):** Đo lường năng lực thuyết phục của Landing Page trong việc biến một lượt ghé thăm (Visitor) thành người mua hàng thực tế (Buyer).
-* **AOV (Average Order Value - Giá trị đơn hàng trung bình):** Đo lường quy mô giá trị kinh tế trung bình của mỗi đơn hàng, phản ánh hiệu quả của chính sách kích cầu mua nhiều quần (*Buy More Save More: Mua chiếc tiếp theo giảm thêm 25% & Miễn phí vận chuyển từ $50*) kết hợp cùng ưu đãi nâng cấp tính năng trong giỏ hàng (*In-Cart Upsell +$9.95*).
+* **AOV (Average Order Value - Giá trị đơn hàng trung bình):** Đo lường quy mô giá trị kinh tế trung bình của mỗi đơn hàng, phản ánh hiệu quả của chính sách kích cầu mua nhiều quần (*Buy More Save More: Mua chiếc tiếp theo giảm thêm 25%*).
 
 ---
 
@@ -99,7 +97,7 @@ Drop-off Rate = (Users_k - Users_{k+1}) / Users_k × 100%
 
 ## IV. CÁC HƯỚNG PHÂN TÍCH PHÂN KHÚC NÂNG CAO (SEGMENTATION & INSIGHTS)
 
-Dữ liệu tracking được tổ chức để Data Analyst có thể trả lời trực tiếp 3 bài toán kinh doanh trọng điểm:
+Dữ liệu tracking được tổ chức để Data Analyst có thể trả lời trực tiếp 2 bài toán kinh doanh trọng điểm:
 
 ### 1. Phân Tích Hiệu Quả Mua Nhiều Giảm Giá (Buy More Save More / Basket Size Analysis)
 * **Câu hỏi phân tích:** *Chính sách giảm thêm 25% cho sản phẩm tiếp theo và Free Ship $50 có thực sự kéo tăng UPT và AOV không?*
@@ -109,13 +107,7 @@ Dữ liệu tracking được tổ chức để Data Analyst có thể trả l�
   * Đơn hàng mua 3+ chiếc
 * **Ý nghĩa:** Nếu tỷ lệ đơn hàng mua >= 2 chiếc vượt mốc 45%, chính sách chiết khấu số lượng đang vận hành hiệu quả.
 
-### 2. Phân Tích Độ Nhạy Bén Ưu Đãi Bán Thêm (Upsell Elasticity)
-* **Câu hỏi phân tích:** *Ưu đãi nâng cấp chống thấm $9.95 (+30%) giúp tăng trưởng AOV bao nhiêu % so với đơn hàng thuần?*
-* **Chỉ số đo lường:**
-  * Upsell Take Rate = \`upsell_click\` / \`upsell_impression\`.
-  * So sánh AOV giữa nhóm có chọn Upsell và nhóm không chọn Upsell.
-
-### 3. Phân Tích Hành Vi Chọn Thuộc Tính Sản Phẩm (Variant Preference)
+### 2. Phân Tích Hành Vi Chọn Thuộc Tính Sản Phẩm (Variant Preference)
 * **Câu hỏi phân tích:** *Màu sắc, kích cỡ và chiều dài ống quần nào được chọn nhiều nhất và có tỷ lệ hoàn tất đơn cao nhất?*
 * **Dữ liệu phân tích:** Đối chiếu tương quan giữa các giá trị \`color\` (Đen, Ghi đá, Xanh navy, Xanh rêu) và \`inseam\` (Petite, Regular, Tall) với sự kiện \`purchase\`.
 * **Ý nghĩa:** Định hướng kế hoạch nhập hàng, sản xuất và bố trí biến thể mặc định xuất hiện đầu tiên trên Landing Page.
