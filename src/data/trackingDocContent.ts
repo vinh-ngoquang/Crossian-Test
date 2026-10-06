@@ -42,9 +42,9 @@ Hệ thống sự kiện được thiết kế phục vụ trực tiếp cho vi�
 | STT | Tên Sự Kiện (Event Name) | Hành Vi Người Dùng (User Action) | Mục Đích Phân Tích (Analytical Purpose) | Các Trường Dữ Liệu Đo Lường (Dimensions & Metrics) |
 | :---: | :--- | :--- | :--- | :--- |
 | **1** | \`page_view\` | Khách truy cập vào Landing Page | Đo lường dung lượng khách mới, tỷ lệ giữ chân (Retention) tại cửa ngõ đầu vào. | \`page_title\`, \`device_type\`, \`referrer\`, \`traffic_source\` |
-| **2** | \`view_item\` | Cuộn đến và xem khu vực sản phẩm chính | Xác định tỷ lệ chuyển tiếp từ xem chung sang tìm hiểu sản phẩm chi tiết. | \`item_id\`, \`item_name\`, \`style\`, \`base_price\` ($31.49) |
-| **3** | \`customize_product\` | Nhấp chọn màu sắc, kích thước eo hoặc kiểu dáng | Phân tích thị hiếu mẫu mã (Top Color / Top Size) để tối ưu tồn kho và hình ảnh hiển thị. | \`color\` (Đen/Ghi/Xanh/Rêu), \`size\` (S/M/L/XL/4XL), \`style\` (Straight/Jogger) |
-| **4** | \`customize_inseam\` | Chọn chiều dài ống quần (Inseam) | Đánh giá nhu cầu thể hình khách hàng theo chiều dài chân. | \`inseam\` (Petite, Regular, Tall) |
+| **2** | \`customize_product\` | Nhấp chọn màu sắc, kích thước eo hoặc kiểu dáng | Phân tích thị hiếu mẫu mã (Top Color / Top Size) để tối ưu tồn kho và hình ảnh hiển thị. | \`color\` (Đen/Ghi/Xanh/Rêu), \`size\` (S/M/L/XL/4XL), \`style\` (Straight/Jogger) |
+| **3** | \`customize_inseam\` | Chọn chiều dài ống quần (Inseam) | Đánh giá nhu cầu thể hình khách hàng theo chiều dài chân. | \`inseam\` (Petite, Regular, Tall) |
+| **4** | \`gallery_interaction\` | Bấm chuyển ảnh hoặc chọn thumbnail trong thư viện ảnh | Đo lường mức độ quan tâm trực quan đối với phom dáng và chất liệu sản phẩm. | \`action\` (next/prev/select_thumbnail), \`image_index\`, \`badge\` |
 | **5** | \`update_quantity\` | Tăng/giảm số lượng quần bằng nút +/- | Đo lường ý định mua số lượng nhiều trước khi bấm thêm giỏ. | \`quantity\` (1, 2, 3, 4...), \`estimated_total\` |
 | **6** | \`add_to_cart\` | Bấm nút "Add to Cart" | Xác định ý định mua hàng rõ ràng (High Purchase Intent) để tính ATC Rate. | \`quantity\`, \`unit_price\`, \`cart_value\`, \`qualifies_for_free_shipping\` |
 | **7** | \`view_cart\` | Mở xem giỏ hàng trượt | Đo lường mức độ kiểm tra lại quyết định chi tiêu trước khi checkout. | \`cart_total\`, \`items_count\`, \`is_free_shipping_eligible\` (đạt $50+) |
@@ -66,11 +66,20 @@ Hệ thống sự kiện được thiết kế phục vụ trực tiếp cho vi�
 * **Quy tắc gán giá trị:** Tại mỗi tầng phễu, nếu người dùng có phát sinh tương tác thì ghi nhận **1**, nếu không phát sinh thì ghi nhận **0**.
 * **Ý nghĩa:** Tỷ lệ giữ chân tầng dưới luôn luôn nhỏ hơn hoặc bằng tầng trên, đảm bảo CR không bao giờ vượt quá 100%.
 
+> 💡 **Quy Chuẩn Đo Lường Tầng 1 & Tầng 2 (Funnel Integrity Protocol):**
+> * **Tầng 1 (Vào Trang):** Kích hoạt duy nhất sự kiện \`page_view\` khi khách vừa mở Landing Page (100% lượng Traffic đầu vào).
+> * **Tầng 2 (Tương Tác Sản Phẩm):** **Tuyệt đối không tự động kích hoạt khi tải trang** (Auto-fire on Load) nhằm loại trừ hiện tượng chuyển đổi 100% ảo giữa Tầng 1 ➔ Tầng 2. Tầng 2 chỉ ghi nhận **1** khi người dùng có **hành vi tương tác chủ động**:
+>   * Bấm đổi màu sắc, kiểu dáng hoặc kích cỡ (\`customize_product\`)
+>   * Bấm chọn chiều dài ống quần (\`customize_inseam\`)
+>   * Bấm lật ảnh hoặc chọn xem ảnh chi tiết trong thư viện (\`gallery_interaction\`)
+>   * Bấm tăng/giảm số lượng sản phẩm bằng nút +/- (\`update_quantity\`)
+> * **Giá trị phân tích kinh doanh:** Cho phép chẩn đoán chính xác **Tỷ lệ Thoát Trang Ngay (Bounce Rate / Drop-off 1)** so với **Khách thực sự tìm hiểu sản phẩm (Product Engagement Rate)**, đánh giá đúng năng lực thu hút của phần đầu trang (Hero Banner).
+
 \`\`\`
-[ Tầng 1: Vào Trang (100%) ] ─────── PageView
+[ Tầng 1: Vào Trang (100%) ] ─────── PageView (Khách mở trang)
         │
-        ▼ (Drop-off 1: Tỷ lệ thoát ngay)
-[ Tầng 2: Tương Tác Sản Phẩm ] ──── Xem chi tiết, đổi màu, đổi size, chọn số lượng
+        ▼ (Drop-off 1: Tỷ lệ thoát ngay - Bounce Rate)
+[ Tầng 2: Tương Tác Sản Phẩm ] ──── Chủ động chọn màu, chọn size, đổi ảnh, tăng số lượng
         │
         ▼ (Drop-off 2: Rào cản cân nhắc mua hàng)
 [ Tầng 3: Thêm Giỏ Hàng ] ───────── Add to Cart

@@ -29,11 +29,47 @@ export const ProductSection: React.FC<Props> = ({ onAddToCart }) => {
   const originalPrice = 59.99;
 
   const handlePrevImage = () => {
-    setActiveImageIndex((prev) => (prev === 0 ? PRODUCT_GALLERY.length - 1 : prev - 1));
+    const newIdx = activeImageIndex === 0 ? PRODUCT_GALLERY.length - 1 : activeImageIndex - 1;
+    setActiveImageIndex(newIdx);
+    tracker.dispatch('gallery_interaction', 'engagement', ['gtm', 'ga4'], {
+      action: 'prev_image',
+      image_index: newIdx,
+      badge: PRODUCT_GALLERY[newIdx]?.badge || 'Gallery',
+    });
   };
 
   const handleNextImage = () => {
-    setActiveImageIndex((prev) => (prev === PRODUCT_GALLERY.length - 1 ? 0 : prev + 1));
+    const newIdx = activeImageIndex === PRODUCT_GALLERY.length - 1 ? 0 : activeImageIndex + 1;
+    setActiveImageIndex(newIdx);
+    tracker.dispatch('gallery_interaction', 'engagement', ['gtm', 'ga4'], {
+      action: 'next_image',
+      image_index: newIdx,
+      badge: PRODUCT_GALLERY[newIdx]?.badge || 'Gallery',
+    });
+  };
+
+  const handleSelectThumbnail = (idx: number) => {
+    setActiveImageIndex(idx);
+    tracker.dispatch('gallery_interaction', 'engagement', ['gtm', 'ga4'], {
+      action: 'select_thumbnail',
+      image_index: idx,
+      badge: PRODUCT_GALLERY[idx]?.badge || 'Gallery',
+    });
+  };
+
+  const handleQuantityChange = (delta: number) => {
+    setQuantity((prev) => {
+      const newQty = Math.max(1, prev + delta);
+      if (newQty !== prev) {
+        tracker.dispatch('update_quantity', 'engagement', ['gtm', 'ga4'], {
+          previous_quantity: prev,
+          quantity: newQty,
+          direction: delta > 0 ? 'increase' : 'decrease',
+          estimated_total: Number((price * newQty).toFixed(2)),
+        });
+      }
+      return newQty;
+    });
   };
 
   const handleColorStyleSelect = (option: ColorStyleOption) => {
@@ -148,7 +184,7 @@ export const ProductSection: React.FC<Props> = ({ onAddToCart }) => {
                   <button
                     key={idx}
                     type="button"
-                    onClick={() => setActiveImageIndex(idx)}
+                    onClick={() => handleSelectThumbnail(idx)}
                     className={`w-14 h-16 rounded overflow-hidden border-2 shrink-0 transition-all cursor-pointer ${
                       isActive ? 'border-black' : 'border-stone-200 opacity-70 hover:opacity-100'
                     }`}
@@ -282,7 +318,7 @@ export const ProductSection: React.FC<Props> = ({ onAddToCart }) => {
               <div className="flex items-center border border-stone-300 rounded-md bg-white">
                 <button
                   type="button"
-                  onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                  onClick={() => handleQuantityChange(-1)}
                   className="px-3 py-2.5 text-stone-600 hover:bg-stone-100 transition-colors cursor-pointer"
                 >
                   <Minus className="w-3.5 h-3.5" />
@@ -292,7 +328,7 @@ export const ProductSection: React.FC<Props> = ({ onAddToCart }) => {
                 </span>
                 <button
                   type="button"
-                  onClick={() => setQuantity((q) => q + 1)}
+                  onClick={() => handleQuantityChange(1)}
                   className="px-3 py-2.5 text-stone-600 hover:bg-stone-100 transition-colors cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />

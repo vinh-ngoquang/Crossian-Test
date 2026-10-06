@@ -74,7 +74,14 @@ export function flattenRecord(e: TrackingEventRecord): FlattenedEventRow {
 
   let funnelStep = 'Engagement';
   if (e.eventName === 'page_view') funnelStep = '1. Landing';
-  else if (e.eventName === 'view_item' || e.eventName === 'customize_product') funnelStep = '2. Product Explore';
+  else if (
+    e.eventName === 'view_item' ||
+    e.eventName === 'customize_product' ||
+    e.eventName === 'customize_inseam' ||
+    e.eventName === 'gallery_interaction' ||
+    e.eventName === 'update_quantity'
+  )
+    funnelStep = '2. Product Explore';
   else if (e.eventName === 'add_to_cart' || e.eventName === 'upsell_click' || e.eventName === 'cart_quantity_change') funnelStep = '3. Cart Building';
   else if (e.eventName === 'begin_checkout' || e.eventName === 'add_shipping_info' || e.eventName === 'add_payment_info') funnelStep = '4. Checkout';
   else if (e.eventName === 'purchase') funnelStep = '5. Purchase';
@@ -488,11 +495,13 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
                     evSet.has('view_item') ||
                     evSet.has('customize_product') ||
                     evSet.has('customize_inseam') ||
+                    evSet.has('gallery_interaction') ||
+                    evSet.has('update_quantity') ||
                     evSet.has('select_bundle') ||
                     evSet.has('review_interaction')
                   ) {
                     u.hasStage2 = 1;
-                    u.statusLabel = 'Xem chưa thêm giỏ';
+                    u.statusLabel = 'Tương tác SP (chưa thêm giỏ)';
                   } else {
                     u.statusLabel = 'Thoát trang ngay (Bounce)';
                   }

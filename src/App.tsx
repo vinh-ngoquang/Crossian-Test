@@ -31,17 +31,9 @@ export default function App() {
   const [eventCount, setEventCount] = useState(0);
   const [lastEventName, setLastEventName] = useState<string | undefined>(undefined);
 
-  // Initialize PageView Tracking and event subscriber
+  // Initialize PageView Tracking and event subscriber (Chỉ bắn page_view khi vào trang)
   useEffect(() => {
     tracker.trackPageView();
-    tracker.trackViewItem({
-      id: 'SA-ICESILK-001',
-      name: 'StretchActive™ Ultra-Stretch Ice Silk Pants',
-      style: 'Straight Leg',
-      color: 'Obsidian Black',
-      size: 'L',
-      price: 39.95,
-    });
 
     const unsubscribe = tracker.subscribe((events) => {
       setEventCount(events.length);
