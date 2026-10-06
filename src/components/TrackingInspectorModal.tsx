@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { tracker } from '../services/tracking';
 import { PixelConfig, TrackingEventRecord } from '../types';
+import { TRACKING_DOCUMENTATION_MD } from '../data/trackingDocContent';
 import {
   Activity,
   AlertTriangle,
@@ -15,6 +16,7 @@ import {
   Download,
   ExternalLink,
   Eye,
+  FileText,
   Filter,
   Flame,
   Info,
@@ -122,6 +124,26 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
   const [config, setConfig] = useState<PixelConfig>(tracker.getConfig());
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<TrackingEventRecord | null>(null);
+  const [funnelSubTab, setFunnelSubTab] = useState<'overview' | 'users'>('overview');
+  const [docCopied, setDocCopied] = useState(false);
+
+  const handleDownloadDoc = () => {
+    const blob = new Blob([TRACKING_DOCUMENTATION_MD], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'TRACKING_DOCUMENTATION.md';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleCopyDoc = () => {
+    navigator.clipboard.writeText(TRACKING_DOCUMENTATION_MD);
+    setDocCopied(true);
+    setTimeout(() => setDocCopied(false), 2000);
+  };
 
   const handleExportCsv = () => {
     if (events.length === 0) return;
@@ -267,23 +289,37 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-stone-900 border border-stone-800 text-stone-100 rounded-2xl w-full max-w-5xl h-[88vh] flex flex-col shadow-2xl overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-stone-800 bg-stone-950/60">
+        {/* Streamlined Header */}
+        <div className="flex items-center justify-between px-6 py-3.5 border-b border-stone-800 bg-stone-950/80">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-              <Activity className="w-5 h-5 animate-pulse" />
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+              <Activity className="w-4 h-4 animate-pulse" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-bold text-lg text-white">Live Tracking Inspector</h3>
-                <span className="px-2 py-0.5 text-xs font-semibold bg-emerald-500/20 text-emerald-300 rounded-full border border-emerald-500/30 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-                  GTM + GA4 + Meta + TikTok
+                <h3 className="font-bold text-base text-white">Live Tracking & Funnel Console</h3>
+                <span className="inline-flex items-center gap-1 text-[11px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-2 py-0.5 rounded-md">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                  4 Pixels Active (GTM · GA4 · Meta · TikTok)
                 </span>
               </div>
-              <p className="text-xs text-stone-400">
-                Toàn bộ sự kiện e-commerce & hành vi khách hàng được theo dõi theo thời gian thực
-              </p>
+              <div className="flex items-center gap-2 text-xs text-stone-400 mt-0.5 font-mono">
+                <span>User: <strong className="text-emerald-400">{tracker.getUserId()}</strong></span>
+                <span className="text-stone-600">·</span>
+                <span>Session: <strong className="text-cyan-400">{tracker.getSessionId()}</strong></span>
+                <button
+                  onClick={() => {
+                    tracker.renewSession();
+                    setEvents(tracker.getEvents());
+                  }}
+                  className="text-[11px] text-stone-400 hover:text-white underline cursor-pointer"
+                  title="Tạo session mới để kiểm tra phân biệt khách"
+                >
+                  (Đổi session)
+                </button>
+                <span className="text-stone-600">·</span>
+                <span className="text-stone-400">{events.length} sự kiện ghi nhận</span>
+              </div>
             </div>
           </div>
 
@@ -294,132 +330,82 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
                 setEvents([]);
               }}
               title="Xóa toàn bộ dữ liệu tracking"
-              className="p-2 text-stone-400 hover:text-rose-400 hover:bg-stone-800 rounded-lg transition-colors cursor-pointer"
+              className="px-2.5 py-1.5 text-xs text-stone-400 hover:text-rose-400 hover:bg-stone-800/80 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer border border-stone-800"
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Xóa data</span>
             </button>
             <button
               onClick={onClose}
-              className="p-2 text-stone-400 hover:text-white hover:bg-stone-800 rounded-lg transition-colors"
+              className="p-1.5 text-stone-400 hover:text-white hover:bg-stone-800 rounded-lg transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        {/* Status badges bar */}
-        <div className="px-6 py-2.5 bg-stone-950/90 border-b border-stone-800/80 flex flex-wrap items-center justify-between text-xs gap-3">
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-1.5 bg-stone-900 border border-stone-800 px-2.5 py-1 rounded-md text-[11px]">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-              <span className="text-stone-400 font-mono">User_ID:</span>
-              <span className="text-emerald-400 font-mono font-bold">{tracker.getUserId()}</span>
-            </div>
-            <div className="flex items-center gap-1.5 bg-stone-900 border border-stone-800 px-2.5 py-1 rounded-md text-[11px]">
-              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
-              <span className="text-stone-400 font-mono">Session_ID:</span>
-              <span className="text-cyan-400 font-mono font-bold">{tracker.getSessionId()}</span>
-              <button
-                onClick={() => {
-                  tracker.renewSession();
-                  setEvents(tracker.getEvents());
-                }}
-                className="ml-1 text-[10px] text-stone-400 hover:text-white underline cursor-pointer"
-                title="Tạo phiên mới để kiểm tra phân biệt session"
-              >
-                (Đổi session)
-              </button>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-              <span className="text-stone-400 font-mono">GTM:</span>
-              <span className="text-white font-mono bg-stone-800 px-1.5 py-0.5 rounded">{config.gtmId}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-              <span className="text-stone-400 font-mono">GA4:</span>
-              <span className="text-white font-mono bg-stone-800 px-1.5 py-0.5 rounded">{config.ga4Id}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-blue-400"></span>
-              <span className="text-stone-400 font-mono">Meta:</span>
-              <span className="text-white font-mono bg-stone-800 px-1.5 py-0.5 rounded">{config.metaPixelId}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-pink-400"></span>
-              <span className="text-stone-400 font-mono">TikTok:</span>
-              <span className="text-white font-mono bg-stone-800 px-1.5 py-0.5 rounded">{config.tiktokPixelId}</span>
-            </div>
-          </div>
-
-          <div className="text-stone-400 font-mono">
-            Tổng sự kiện: <span className="text-emerald-400 font-bold">{events.length}</span>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex items-center gap-1 px-6 border-b border-stone-800 bg-stone-900/50 overflow-x-auto">
+        {/* Navigation Tabs */}
+        <div className="flex items-center gap-2 px-6 border-b border-stone-800 bg-stone-900/50">
           <button
             onClick={() => setActiveTab('analytics')}
-            className={`px-4 py-3 text-sm font-medium border-b-2 flex items-center gap-2 transition-colors whitespace-nowrap ${
+            className={`px-4 py-2.5 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer ${
               activeTab === 'analytics'
-                ? 'border-emerald-500 text-emerald-400 font-semibold'
+                ? 'border-emerald-500 text-emerald-400'
                 : 'border-transparent text-stone-400 hover:text-stone-200'
             }`}
           >
-            <Filter className="w-4 h-4 text-emerald-400" />
-            Sơ Đồ Phễu Chuyển Đổi (Visual Funnel & CR)
+            <Filter className="w-3.5 h-3.5" />
+            <span>Phễu Chuyển Đổi (Funnel)</span>
           </button>
           <button
             onClick={() => setActiveTab('events')}
-            className={`px-4 py-3 text-sm font-medium border-b-2 flex items-center gap-2 transition-colors whitespace-nowrap ${
+            className={`px-4 py-2.5 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer ${
               activeTab === 'events'
-                ? 'border-emerald-500 text-emerald-400 font-semibold'
+                ? 'border-emerald-500 text-emerald-400'
                 : 'border-transparent text-stone-400 hover:text-stone-200'
             }`}
           >
-            <Terminal className="w-4 h-4" />
-            Nhật ký sự kiện Live ({events.length})
+            <Terminal className="w-3.5 h-3.5" />
+            <span>Nhật Ký Sự Kiện Live ({events.length})</span>
           </button>
           <button
             onClick={() => setActiveTab('config')}
-            className={`px-4 py-3 text-sm font-medium border-b-2 flex items-center gap-2 transition-colors whitespace-nowrap ${
+            className={`px-4 py-2.5 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer ${
               activeTab === 'config'
-                ? 'border-emerald-500 text-emerald-400 font-semibold'
+                ? 'border-emerald-500 text-emerald-400'
                 : 'border-transparent text-stone-400 hover:text-stone-200'
             }`}
           >
-            <Settings className="w-4 h-4" />
-            Cấu hình Mã Pixel & GTM
+            <Settings className="w-3.5 h-3.5" />
+            <span>Cấu Hình Pixel & GTM</span>
           </button>
           <button
             onClick={() => setActiveTab('guide')}
-            className={`px-4 py-3 text-sm font-medium border-b-2 flex items-center gap-2 transition-colors whitespace-nowrap ${
+            className={`px-4 py-2.5 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer ${
               activeTab === 'guide'
-                ? 'border-emerald-500 text-emerald-400 font-semibold'
+                ? 'border-emerald-500 text-emerald-400'
                 : 'border-transparent text-stone-400 hover:text-stone-200'
             }`}
           >
-            <Info className="w-4 h-4" />
-            Hướng dẫn Setup GTM & Ads
+            <FileText className="w-3.5 h-3.5" />
+            <span>Tài Liệu Tracking (Docs)</span>
           </button>
         </div>
 
         {/* Content body */}
-        <div className="flex-1 overflow-hidden p-6">
+        <div className="flex-1 overflow-hidden p-5 sm:p-6">
           {activeTab === 'analytics' && (
-            <div className="h-full overflow-y-auto pr-2 space-y-6">
-              {/* Sơ đồ Phễu Chuyển Đổi Đo Lường Theo User (+1 nếu có thao tác, 0 nếu không) */}
+            <div className="h-full overflow-y-auto pr-1 space-y-5">
               {(() => {
                 // 1. Phân nhóm sự kiện theo từng User ID duy nhất
                 interface UserFunnelRow {
                   userId: string;
                   eventsCount: number;
-                  hasStage1: number; // Tầng 1: Vào trang (Visit) -> +1 nếu có thao tác, 0 nếu không
-                  hasStage2: number; // Tầng 2: Xem / Chọn màu / size / dáng -> +1 hoặc 0
-                  hasStage3: number; // Tầng 3: Thêm vào giỏ hàng (Cart) -> +1 hoặc 0
-                  hasStage4: number; // Tầng 4: Bắt đầu checkout (Checkout) -> +1 hoặc 0
-                  hasStage5: number; // Tầng 5: Mua hàng thành công (Purchase) -> +1 hoặc 0
+                  hasStage1: number; // 01. Vào trang (Visit) -> +1 nếu thao tác, 0 nếu không
+                  hasStage2: number; // 02. Xem/Chọn SP -> +1 hoặc 0
+                  hasStage3: number; // 03. Thêm giỏ hàng -> +1 hoặc 0
+                  hasStage4: number; // 04. Checkout -> +1 hoặc 0
+                  hasStage5: number; // 05. Mua hàng -> +1 hoặc 0
                   revenue: number;
                   units: number;
                   hasUpsellClick: number;
@@ -445,7 +431,7 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
                       units: 0,
                       hasUpsellClick: 0,
                       hasUpsellImpression: 0,
-                      statusLabel: 'Tầng 1 (Chỉ vào trang)',
+                      statusLabel: 'Chỉ ghé thăm (Bounce)',
                       lastActionTime: e.timestamp,
                     });
                   }
@@ -456,18 +442,15 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
                   if (e.eventName === 'upsell_impression') u.hasUpsellImpression = 1;
                 });
 
-                // Quy tắc: Chỉ quan tâm tầng đó user có thao tác hay không.
-                // Thao tác: +1, không thao tác: 0. Mỗi user chỉ tính tối đa +1 cho mỗi tầng.
+                // Quy tắc nhị phân: User có thao tác = +1, không thao tác = 0
                 userMap.forEach((u) => {
                   const userEvents = events.filter(
                     (e) => (e.userId || e.sessionId || 'usr_anonymous') === u.userId
                   );
                   const evSet = new Set(userEvents.map((e) => e.eventName));
 
-                  // Mọi user có log sự kiện đều đã truy cập trang web (Tầng 1 = 1)
                   u.hasStage1 = 1;
 
-                  // Tầng 5: Mua hàng thành công (Purchase)
                   if (evSet.has('purchase')) {
                     u.hasStage5 = 1;
                     u.hasStage4 = 1;
@@ -480,9 +463,7 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
                         u.revenue += Number(e.payload?.value || e.payload?.price || 0);
                         u.units += Number(e.payload?.quantity || e.payload?.num_items || 1);
                       });
-                  }
-                  // Tầng 4: Bắt đầu checkout
-                  else if (
+                  } else if (
                     evSet.has('begin_checkout') ||
                     evSet.has('add_shipping_info') ||
                     evSet.has('add_payment_info')
@@ -490,16 +471,12 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
                     u.hasStage4 = 1;
                     u.hasStage3 = 1;
                     u.hasStage2 = 1;
-                    u.statusLabel = 'Rớt tại Tầng 4 (Bỏ dở thanh toán)';
-                  }
-                  // Tầng 3: Thêm vào giỏ hàng
-                  else if (evSet.has('add_to_cart')) {
+                    u.statusLabel = 'Rớt tại Checkout';
+                  } else if (evSet.has('add_to_cart')) {
                     u.hasStage3 = 1;
                     u.hasStage2 = 1;
-                    u.statusLabel = 'Rớt tại Tầng 3 (Bỏ quên giỏ hàng)';
-                  }
-                  // Tầng 2: Xem / Tương tác sản phẩm (chọn màu / size / inseam / bundle)
-                  else if (
+                    u.statusLabel = 'Rớt tại Giỏ hàng';
+                  } else if (
                     evSet.has('view_item') ||
                     evSet.has('customize_product') ||
                     evSet.has('customize_inseam') ||
@@ -507,15 +484,12 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
                     evSet.has('review_interaction')
                   ) {
                     u.hasStage2 = 1;
-                    u.statusLabel = 'Rớt tại Tầng 2 (Xem nhưng chưa thêm giỏ)';
-                  }
-                  // Tầng 1: Chỉ ghé thăm trang rồi thoát
-                  else {
-                    u.statusLabel = 'Rớt tại Tầng 1 (Thoát ngay - Bounce)';
+                    u.statusLabel = 'Xem chưa thêm giỏ';
+                  } else {
+                    u.statusLabel = 'Thoát trang ngay (Bounce)';
                   }
                 });
 
-                // Tổng hợp dữ liệu phễu (u1 >= u2 >= u3 >= u4 >= u5 luôn đảm bảo tuyệt đối)
                 let u1 = 0;
                 let u2 = 0;
                 let u3 = 0;
@@ -540,7 +514,6 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
                   totalUpsellImpressions += u.hasUpsellImpression;
                 });
 
-                // Tỷ lệ chuyển đổi tổng thể (Overall CR)
                 const cr = u1 > 0 ? ((u5 / u1) * 100).toFixed(1) : '0.0';
                 const aov = u5 > 0 ? (totalRevenue / u5).toFixed(2) : '0.00';
                 const upt = u5 > 0 ? (totalUnits / u5).toFixed(1) : '0.0';
@@ -549,564 +522,326 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
                     ? ((totalUpsellClicks / totalUpsellImpressions) * 100).toFixed(1)
                     : '0.0';
 
-                // Tỷ lệ so với đỉnh phễu (luôn nằm trong [0%, 100%], không bao giờ vượt 100% hay 200%)
                 const pct1 = u1 > 0 ? 100 : 0;
                 const pct2 = u1 > 0 ? Number(((u2 / u1) * 100).toFixed(1)) : 0;
                 const pct3 = u1 > 0 ? Number(((u3 / u1) * 100).toFixed(1)) : 0;
                 const pct4 = u1 > 0 ? Number(((u4 / u1) * 100).toFixed(1)) : 0;
                 const pct5 = u1 > 0 ? Number(((u5 / u1) * 100).toFixed(1)) : 0;
 
-                // Tỷ lệ chuyển tiếp giữa các tầng liên tiếp (Step Conversion)
-                const conv1Pct = u1 > 0 ? ((u2 / u1) * 100).toFixed(1) : '0.0';
-                const drop1Count = u1 - u2;
-                const drop1Pct = u1 > 0 ? ((drop1Count / u1) * 100).toFixed(1) : '0.0';
+                const drop1Pct = u1 > 0 ? (((u1 - u2) / u1) * 100).toFixed(1) : '0.0';
+                const drop2Pct = u2 > 0 ? (((u2 - u3) / u2) * 100).toFixed(1) : '0.0';
+                const drop3Pct = u3 > 0 ? (((u3 - u4) / u3) * 100).toFixed(1) : '0.0';
+                const drop4Pct = u4 > 0 ? (((u4 - u5) / u4) * 100).toFixed(1) : '0.0';
 
-                const conv2Pct = u2 > 0 ? ((u3 / u2) * 100).toFixed(1) : '0.0';
-                const drop2Count = u2 - u3;
-                const drop2Pct = u2 > 0 ? ((drop2Count / u2) * 100).toFixed(1) : '0.0';
+                // Bottleneck analysis
+                const d1 = u1 > 0 ? (u1 - u2) / u1 : 0;
+                const d2 = u2 > 0 ? (u2 - u3) / u2 : 0;
+                const d3 = u3 > 0 ? (u3 - u4) / u3 : 0;
+                const d4 = u4 > 0 ? (u4 - u5) / u4 : 0;
 
-                const conv3Pct = u3 > 0 ? ((u4 / u3) * 100).toFixed(1) : '0.0';
-                const drop3Count = u3 - u4;
-                const drop3Pct = u3 > 0 ? ((drop3Count / u3) * 100).toFixed(1) : '0.0';
-
-                const conv4Pct = u4 > 0 ? ((u5 / u4) * 100).toFixed(1) : '0.0';
-                const drop4Count = u4 - u5;
-                const drop4Pct = u4 > 0 ? ((drop4Count / u4) * 100).toFixed(1) : '0.0';
+                let bottleneckTitle = 'Chưa có đủ dữ liệu tương tác để phân tích';
+                let bottleneckAdvice = 'Hãy thử chọn màu, chọn size, thêm giỏ và thanh toán để phễu phân tích điểm rơi rụng.';
+                if (u1 > 0) {
+                  const maxDrop = Math.max(d1, d2, d3, d4);
+                  if (maxDrop === d3 && u3 > 0) {
+                    bottleneckTitle = 'Điểm nghẽn: Giỏ hàng ➔ Bắt đầu Thanh toán (Rớt ' + drop3Pct + '%)';
+                    bottleneckAdvice = 'Khách đã thêm vào giỏ nhưng chưa bấm Checkout. Đề xuất: Thêm nút PayPal Express 1-click hoặc cam kết Miễn Phí Đổi Trả 30 ngày ngay trong giỏ.';
+                  } else if (maxDrop === d2 && u2 > 0) {
+                    bottleneckTitle = 'Điểm nghẽn: Xem Sản phẩm ➔ Thêm Giỏ hàng (Rớt ' + drop2Pct + '%)';
+                    bottleneckAdvice = 'Khách có xem và chọn mẫu nhưng ngần ngại bấm mua. Đề xuất: Nổi bật ưu đãi "Giảm 70% hôm nay" và huy hiệu Best Seller.';
+                  } else if (maxDrop === d4 && u4 > 0) {
+                    bottleneckTitle = 'Điểm nghẽn: Bắt đầu Checkout ➔ Hoàn tất Mua hàng (Rớt ' + drop4Pct + '%)';
+                    bottleneckAdvice = 'Khách mở form đặt hàng nhưng bỏ dở. Đề xuất: Rút gọn form xuống 3 trường cơ bản và thêm huy hiệu bảo mật SSL 256-bit.';
+                  } else if (maxDrop === d1 && u1 > 0) {
+                    bottleneckTitle = 'Điểm nghẽn: Trang chủ ➔ Tương tác Chọn sản phẩm (Rớt ' + drop1Pct + '%)';
+                    bottleneckAdvice = 'Khách thoát trang ngay khi vào (Bounce). Đề xuất: Nâng cấp hình ảnh Hero Banner và hiển thị đánh giá 4.9 sao ở đầu trang.';
+                  }
+                }
 
                 return (
                   <>
-                    {/* Top 4 KPI Metrics */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="bg-stone-950 p-4 rounded-xl border border-stone-800">
-                        <div className="flex items-center justify-between text-xs text-stone-400">
-                          <span>Overall CR (Tỷ lệ chuyển đổi)</span>
-                          <Percent className="w-4 h-4 text-emerald-400" />
+                    {/* 1. Sleek KPI Metrics Bar */}
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                      <div className="bg-stone-950/80 border border-stone-800/80 rounded-xl p-3.5 flex items-center justify-between">
+                        <div>
+                          <div className="text-[10px] text-stone-400 uppercase tracking-wider font-mono">Conversion Rate</div>
+                          <div className="text-xl font-bold font-mono text-emerald-400 mt-0.5">{cr}%</div>
+                          <div className="text-[11px] text-stone-400">{u5}/{u1} khách mua hàng</div>
                         </div>
-                        <div className="text-2xl font-black text-white mt-2 font-mono">
-                          {cr}%
-                        </div>
-                        <div className="text-[11px] text-emerald-400 mt-1 flex items-center gap-1">
-                          <TrendingUp className="w-3 h-3" />
-                          <span>
-                            {u5 > 0 ? `${u5}/${u1} khách đã mua hàng` : 'Chưa có đơn hàng'}
-                          </span>
+                        <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+                          <Percent className="w-4 h-4" />
                         </div>
                       </div>
 
-                      <div className="bg-stone-950 p-4 rounded-xl border border-stone-800">
-                        <div className="flex items-center justify-between text-xs text-stone-400">
-                          <span>Average Order Value (AOV)</span>
-                          <TrendingUp className="w-4 h-4 text-amber-400" />
+                      <div className="bg-stone-950/80 border border-stone-800/80 rounded-xl p-3.5 flex items-center justify-between">
+                        <div>
+                          <div className="text-[10px] text-stone-400 uppercase tracking-wider font-mono">Tổng Doanh Thu</div>
+                          <div className="text-xl font-bold font-mono text-white mt-0.5">${totalRevenue.toFixed(2)}</div>
+                          <div className="text-[11px] text-stone-400">{u5} đơn hàng thành công</div>
                         </div>
-                        <div className="text-2xl font-black text-amber-400 mt-2 font-mono">
-                          ${aov}
-                        </div>
-                        <div className="text-[11px] text-stone-400 mt-1">
-                          {u5 > 0
-                            ? `Tổng DT: $${totalRevenue.toFixed(2)}`
-                            : 'Chưa có doanh thu'}
+                        <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
+                          <TrendingUp className="w-4 h-4" />
                         </div>
                       </div>
 
-                      <div className="bg-stone-950 p-4 rounded-xl border border-stone-800">
-                        <div className="flex items-center justify-between text-xs text-stone-400">
-                          <span>Units Per Order (UPT)</span>
-                          <ShoppingCart className="w-4 h-4 text-cyan-400" />
+                      <div className="bg-stone-950/80 border border-stone-800/80 rounded-xl p-3.5 flex items-center justify-between">
+                        <div>
+                          <div className="text-[10px] text-stone-400 uppercase tracking-wider font-mono">Giá Trị TB (AOV)</div>
+                          <div className="text-xl font-bold font-mono text-cyan-400 mt-0.5">${aov}</div>
+                          <div className="text-[11px] text-stone-400">{upt} quần / đơn ({totalUnits} chiếc)</div>
                         </div>
-                        <div className="text-2xl font-black text-white mt-2 font-mono">
-                          {upt} quần / đơn
-                        </div>
-                        <div className="text-[11px] text-cyan-400 mt-1">
-                          {u5 > 0
-                            ? `Tổng đã bán: ${totalUnits} chiếc`
-                            : 'Chưa có sản phẩm bán ra'}
+                        <div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shrink-0">
+                          <ShoppingCart className="w-4 h-4" />
                         </div>
                       </div>
 
-                      <div className="bg-stone-950 p-4 rounded-xl border border-stone-800">
-                        <div className="flex items-center justify-between text-xs text-stone-400">
-                          <span>Tỷ lệ Click Upsell (+30%)</span>
-                          <Flame className="w-4 h-4 text-rose-400" />
+                      <div className="bg-stone-950/80 border border-stone-800/80 rounded-xl p-3.5 flex items-center justify-between">
+                        <div>
+                          <div className="text-[10px] text-stone-400 uppercase tracking-wider font-mono">Click Upsell (+30%)</div>
+                          <div className="text-xl font-bold font-mono text-rose-400 mt-0.5">{upsellRate}%</div>
+                          <div className="text-[11px] text-stone-400">{totalUpsellClicks}/{totalUpsellImpressions} click ưu đãi</div>
                         </div>
-                        <div className="text-2xl font-black text-rose-400 mt-2 font-mono">
-                          {upsellRate}%
-                        </div>
-                        <div className="text-[11px] text-stone-400 mt-1">
-                          {totalUpsellImpressions > 0
-                            ? `${totalUpsellClicks}/${totalUpsellImpressions} khách click ưu đãi`
-                            : 'Chưa mở giỏ hàng'}
+                        <div className="w-8 h-8 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 shrink-0">
+                          <Flame className="w-4 h-4" />
                         </div>
                       </div>
                     </div>
 
-                    {/* SƠ ĐỒ HÌNH PHỄU TRỰC QUAN (VISUAL STEPPED FUNNEL DIAGRAM) */}
-                    <div className="bg-stone-950 p-6 rounded-2xl border border-stone-800 space-y-6">
-                      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-800 pb-4">
-                        <div>
-                          <h4 className="font-bold text-base text-white flex items-center gap-2">
-                            <Filter className="w-5 h-5 text-emerald-400" />
-                            Sơ Đồ Phễu Chuyển Đổi Trực Quan (E-Commerce User Funnel)
-                          </h4>
-                          <p className="text-xs text-stone-400 mt-0.5">
-                            Quy tắc chuẩn: Mỗi User có thao tác ở tầng đó = <strong>+1</strong>, không thao tác = <strong>0</strong>. Tỷ lệ tối đa 100%, không bị ảo &gt; 100%.
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-mono text-stone-400">Tổng khách ghé thăm:</span>
-                          <span className="px-2.5 py-1 text-xs font-mono font-bold bg-emerald-950/80 text-emerald-400 border border-emerald-500/30 rounded-lg">
-                            {u1} User{u1 > 1 ? 's' : ''}
-                          </span>
-                        </div>
+                    {/* Deep-Dive Sub-Tabs (Clean & Compact) */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 border-b border-stone-800/80 pb-2">
+                        <button
+                          onClick={() => setFunnelSubTab('overview')}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer flex items-center gap-1.5 ${
+                            funnelSubTab === 'overview'
+                              ? 'bg-stone-800 text-white font-semibold shadow-xs'
+                              : 'text-stone-400 hover:text-white hover:bg-stone-900'
+                          }`}
+                        >
+                          <Filter className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Bảng Phễu Chuyển Đổi & Điểm Nghẽn</span>
+                        </button>
+                        <button
+                          onClick={() => setFunnelSubTab('users')}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer flex items-center gap-1.5 ${
+                            funnelSubTab === 'users'
+                              ? 'bg-stone-800 text-white font-semibold shadow-xs'
+                              : 'text-stone-400 hover:text-white hover:bg-stone-900'
+                          }`}
+                        >
+                          <Users className="w-3.5 h-3.5 text-cyan-400" />
+                          <span>Kiểm Chứng Từng User ({usersList.length})</span>
+                        </button>
                       </div>
 
-                      {/* Visual Funnel Tiers & Drop-off Bridges */}
-                      <div className="flex flex-col items-center gap-2 py-2">
-                        {/* TẦNG 1: PageView */}
-                        <div className="w-full bg-gradient-to-r from-emerald-950/80 via-emerald-900/40 to-emerald-950/80 border border-emerald-500/40 rounded-xl p-4 shadow-md transition-all hover:border-emerald-400">
-                          <div className="flex items-center justify-between text-xs sm:text-sm">
-                            <div className="flex items-center gap-2.5 font-bold text-white">
-                              <div className="w-7 h-7 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0">
-                                <Eye className="w-4 h-4" />
-                              </div>
-                              <div>
-                                <span className="text-emerald-400 font-mono text-[11px] uppercase mr-2 font-bold">Tầng 1</span>
-                                <span className="font-semibold text-white">Khách Truy cập Trang (PageView / Visit)</span>
-                              </div>
+                      {/* SUB-VIEW 1: OVERVIEW & BOTTLENECK */}
+                      {funnelSubTab === 'overview' && (
+                        <div className="space-y-3">
+                          {/* Compact CRO Callout */}
+                          <div className="bg-stone-950/80 border border-stone-800 rounded-xl p-3.5 flex items-start gap-3">
+                            <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0 mt-0.5">
+                              <AlertTriangle className="w-3.5 h-3.5" />
                             </div>
-                            <div className="text-right">
-                              <div className="font-mono font-black text-white text-base">
-                                {u1} <span className="text-xs text-stone-400 font-normal">khách (+1/user)</span>
-                              </div>
-                              <span className="text-[11px] font-mono text-emerald-400 font-bold">{pct1}% (Đỉnh phễu)</span>
+                            <div className="space-y-0.5">
+                              <h5 className="text-xs font-bold text-white">{bottleneckTitle}</h5>
+                              <p className="text-xs text-stone-400 leading-relaxed">{bottleneckAdvice}</p>
                             </div>
                           </div>
-                        </div>
 
-                        {/* BRIDGE 1 -> 2: Drop-off */}
-                        <div className="flex flex-col items-center justify-center my-0.5">
-                          <div className="h-4 w-px bg-stone-700"></div>
-                          <div className="flex items-center gap-2 px-3 py-1 bg-stone-900 border border-stone-800 rounded-full text-[11px] font-mono text-stone-300 shadow-sm">
-                            <ArrowDown className="w-3 h-3 text-stone-400" />
-                            {u1 > 0 ? (
-                              <>
-                                <span className="text-rose-400 font-bold">
-                                  -{drop1Pct}% Rớt
-                                </span>
-                                <span className="text-stone-500">({drop1Count} khách thoát)</span>
-                                <span className="text-stone-600">|</span>
-                                <span className="text-emerald-400">
-                                  {conv1Pct}% chuyển tiếp
-                                </span>
-                              </>
-                            ) : (
-                              <span className="text-stone-500">Chưa có dữ liệu</span>
-                            )}
-                          </div>
-                          <div className="h-4 w-px bg-stone-700"></div>
-                        </div>
-
-                        {/* TẦNG 2: ViewContent / Customize */}
-                        <div
-                          style={{
-                            width: u1 > 0 ? `${Math.max(48, Math.min(100, pct2))}%` : '85%',
-                          }}
-                          className="bg-gradient-to-r from-cyan-950/80 via-cyan-900/40 to-cyan-950/80 border border-cyan-500/40 rounded-xl p-4 shadow-md transition-all hover:border-cyan-400 min-w-[280px]"
-                        >
-                          <div className="flex items-center justify-between text-xs sm:text-sm">
-                            <div className="flex items-center gap-2.5 font-bold text-white">
-                              <div className="w-7 h-7 rounded-lg bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shrink-0">
-                                <Sliders className="w-4 h-4" />
-                              </div>
-                              <div>
-                                <span className="text-cyan-400 font-mono text-[11px] uppercase mr-2 font-bold">Tầng 2</span>
-                                <span className="font-semibold text-white">Xem & Tương tác Sản phẩm (Chọn Màu / Size / Inseam)</span>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <div className="font-mono font-black text-white text-base">
-                                {u2} <span className="text-xs text-stone-400 font-normal">khách (+1/user)</span>
-                              </div>
-                              <span className="text-[11px] font-mono text-cyan-400 font-bold">
-                                {pct2}% của tổng
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* BRIDGE 2 -> 3: Drop-off */}
-                        <div className="flex flex-col items-center justify-center my-0.5">
-                          <div className="h-4 w-px bg-stone-700"></div>
-                          <div className="flex items-center gap-2 px-3 py-1 bg-stone-900 border border-stone-800 rounded-full text-[11px] font-mono text-stone-300 shadow-sm">
-                            <ArrowDown className="w-3 h-3 text-stone-400" />
-                            {u2 > 0 ? (
-                              <>
-                                <span className="text-rose-400 font-bold">
-                                  -{drop2Pct}% Rớt
-                                </span>
-                                <span className="text-stone-500">({drop2Count} xem không thêm giỏ)</span>
-                                <span className="text-stone-600">|</span>
-                                <span className="text-cyan-400">
-                                  {conv2Pct}% chuyển tiếp
-                                </span>
-                              </>
-                            ) : (
-                              <span className="text-stone-500">Chưa có dữ liệu</span>
-                            )}
-                          </div>
-                          <div className="h-4 w-px bg-stone-700"></div>
-                        </div>
-
-                        {/* TẦNG 3: AddToCart */}
-                        <div
-                          style={{
-                            width: u1 > 0 ? `${Math.max(40, Math.min(100, pct3))}%` : '70%',
-                          }}
-                          className="bg-gradient-to-r from-blue-950/80 via-blue-900/40 to-blue-950/80 border border-blue-500/40 rounded-xl p-4 shadow-md transition-all hover:border-blue-400 min-w-[260px]"
-                        >
-                          <div className="flex items-center justify-between text-xs sm:text-sm">
-                            <div className="flex items-center gap-2.5 font-bold text-white">
-                              <div className="w-7 h-7 rounded-lg bg-blue-500/20 border border-blue-500/40 flex items-center justify-center text-blue-400 shrink-0">
-                                <ShoppingCart className="w-4 h-4" />
-                              </div>
-                              <div>
-                                <span className="text-blue-400 font-mono text-[11px] uppercase mr-2 font-bold">Tầng 3</span>
-                                <span className="font-semibold text-white">Thêm vào Giỏ hàng (AddToCart)</span>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <div className="font-mono font-black text-white text-base">
-                                {u3} <span className="text-xs text-stone-400 font-normal">khách (+1/user)</span>
-                              </div>
-                              <span className="text-[11px] font-mono text-blue-400 font-bold">
-                                {pct3}% của tổng
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* BRIDGE 3 -> 4: Drop-off */}
-                        <div className="flex flex-col items-center justify-center my-0.5">
-                          <div className="h-4 w-px bg-stone-700"></div>
-                          <div className="flex items-center gap-2 px-3 py-1 bg-stone-900 border border-stone-800 rounded-full text-[11px] font-mono text-stone-300 shadow-sm">
-                            <ArrowDown className="w-3 h-3 text-stone-400" />
-                            {u3 > 0 ? (
-                              <>
-                                <span className="text-rose-400 font-bold">
-                                  -{drop3Pct}% Rớt
-                                </span>
-                                <span className="text-stone-500">({drop3Count} bỏ quên giỏ hàng)</span>
-                                <span className="text-stone-600">|</span>
-                                <span className="text-indigo-400">
-                                  {conv3Pct}% chuyển tiếp
-                                </span>
-                              </>
-                            ) : (
-                              <span className="text-stone-500">Chưa có dữ liệu</span>
-                            )}
-                          </div>
-                          <div className="h-4 w-px bg-stone-700"></div>
-                        </div>
-
-                        {/* TẦNG 4: InitiateCheckout */}
-                        <div
-                          style={{
-                            width: u1 > 0 ? `${Math.max(34, Math.min(100, pct4))}%` : '55%',
-                          }}
-                          className="bg-gradient-to-r from-indigo-950/80 via-indigo-900/40 to-indigo-950/80 border border-indigo-500/40 rounded-xl p-4 shadow-md transition-all hover:border-indigo-400 min-w-[240px]"
-                        >
-                          <div className="flex items-center justify-between text-xs sm:text-sm">
-                            <div className="flex items-center gap-2.5 font-bold text-white">
-                              <div className="w-7 h-7 rounded-lg bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 shrink-0">
-                                <CreditCard className="w-4 h-4" />
-                              </div>
-                              <div>
-                                <span className="text-indigo-400 font-mono text-[11px] uppercase mr-2 font-bold">Tầng 4</span>
-                                <span className="font-semibold text-white">Bắt đầu Thanh toán (Initiate Checkout)</span>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <div className="font-mono font-black text-white text-base">
-                                {u4} <span className="text-xs text-stone-400 font-normal">khách (+1/user)</span>
-                              </div>
-                              <span className="text-[11px] font-mono text-indigo-400 font-bold">
-                                {pct4}% của tổng
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* BRIDGE 4 -> 5: Drop-off */}
-                        <div className="flex flex-col items-center justify-center my-0.5">
-                          <div className="h-4 w-px bg-stone-700"></div>
-                          <div className="flex items-center gap-2 px-3 py-1 bg-stone-900 border border-stone-800 rounded-full text-[11px] font-mono text-stone-300 shadow-sm">
-                            <ArrowDown className="w-3 h-3 text-stone-400" />
-                            {u4 > 0 ? (
-                              <>
-                                <span className="text-rose-400 font-bold">
-                                  -{drop4Pct}% Rớt
-                                </span>
-                                <span className="text-stone-500">({drop4Count} hủy thanh toán)</span>
-                                <span className="text-stone-600">|</span>
-                                <span className="text-amber-400">
-                                  {conv4Pct}% hoàn tất đơn
-                                </span>
-                              </>
-                            ) : (
-                              <span className="text-stone-500">Chưa có dữ liệu</span>
-                            )}
-                          </div>
-                          <div className="h-4 w-px bg-stone-700"></div>
-                        </div>
-
-                        {/* TẦNG 5: Purchase (Đáy Phễu) */}
-                        <div
-                          style={{
-                            width: u1 > 0 ? `${Math.max(28, Math.min(100, pct5))}%` : '42%',
-                          }}
-                          className="bg-gradient-to-r from-amber-950/90 via-emerald-950/60 to-amber-950/90 border-2 border-amber-500/60 rounded-xl p-4 shadow-xl shadow-amber-500/10 transition-all hover:border-amber-400 min-w-[220px]"
-                        >
-                          <div className="flex items-center justify-between text-xs sm:text-sm">
-                            <div className="flex items-center gap-2.5 font-bold text-white">
-                              <div className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-amber-400 shrink-0">
-                                <CheckCircle2 className="w-5 h-5 text-amber-400" />
-                              </div>
-                              <div>
-                                <span className="text-amber-400 font-mono text-[11px] uppercase mr-2 font-bold">Tầng 5 (Đích)</span>
-                                <span className="font-bold text-amber-300">Hoàn tất Mua hàng (Purchase)</span>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <div className="font-mono font-black text-amber-400 text-lg">
-                                {u5} <span className="text-xs text-stone-300 font-normal">khách mua (+1/user)</span>
-                              </div>
-                              <div className="text-[11px] font-mono text-emerald-400 font-bold">
-                                CR: {cr}% (${totalRevenue.toFixed(2)})
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* CHẨN ĐOÁN ĐIỂM NGHẼN (CRO FUNNEL BOTTLENECK DIAGNOSTICS) */}
-                      {(() => {
-                        const d1 = u1 > 0 ? (u1 - u2) / u1 : 0;
-                        const d2 = u2 > 0 ? (u2 - u3) / u2 : 0;
-                        const d3 = u3 > 0 ? (u3 - u4) / u3 : 0;
-                        const d4 = u4 > 0 ? (u4 - u5) / u4 : 0;
-
-                        let bottleneck = 'Chưa có đủ dữ liệu duyệt web để chẩn đoán';
-                        let advice = 'Hãy thử chọn màu, chọn size, thêm giỏ và thanh toán để phễu phân tích điểm rơi rụng.';
-                        if (u1 > 0) {
-                          const maxDrop = Math.max(d1, d2, d3, d4);
-                          if (maxDrop === d3 && u3 > 0) {
-                            bottleneck = 'Điểm nghẽn lớn nhất: Giỏ hàng ➔ Bắt đầu Thanh toán (Cart Abandonment)';
-                            advice = 'Khách thêm vào giỏ nhưng không bấm Checkout. Giải pháp: Thêm nút PayPal Express 1-click hoặc hiển thị rõ cam kết Miễn Phí Đổi Trả 30 ngày.';
-                          } else if (maxDrop === d2 && u2 > 0) {
-                            bottleneck = 'Điểm nghẽn lớn nhất: Xem Sản phẩm ➔ Thêm Giỏ hàng';
-                            advice = 'Khách chọn màu và size nhưng chần chừ bấm Add to Cart. Giải pháp: Nổi bật ưu đãi "Giảm 70% hôm nay" và đồng hồ đếm ngược kích cầu.';
-                          } else if (maxDrop === d4 && u4 > 0) {
-                            bottleneck = 'Điểm nghẽn lớn nhất: Bắt đầu Checkout ➔ Hoàn tất Mua hàng';
-                            advice = 'Khách mở form thanh toán nhưng bỏ dở. Giải pháp: Đơn giản hóa form, bổ sung huy hiệu bảo mật SSL và đa dạng cổng thanh toán.';
-                          } else if (maxDrop === d1 && u1 > 0) {
-                            bottleneck = 'Điểm nghẽn lớn nhất: Trang chủ ➔ Tương tác Chọn sản phẩm';
-                            advice = 'Khách vừa vào đã thoát (Bounce). Giải pháp: Tối ưu hình ảnh Hero Banner, hiển thị ngay điểm số 4.9 sao và đánh giá thực tế của khách hàng.';
-                          }
-                        }
-
-                        return (
-                          <div className="bg-stone-900/90 border border-stone-800 rounded-xl p-4 flex items-start gap-3 mt-4">
-                            <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0 mt-0.5">
-                              <AlertTriangle className="w-4 h-4" />
-                            </div>
-                            <div className="space-y-1">
-                              <h5 className="text-xs font-bold text-white font-sans">{bottleneck}</h5>
-                              <p className="text-xs text-stone-400 font-sans leading-relaxed">{advice}</p>
-                            </div>
-                          </div>
-                        );
-                      })()}
-
-                      {/* BẢNG KIỂM CHỨNG THAO TÁC THEO TỪNG USER (+1 NẾU THAO TÁC, 0 NẾU KHÔNG) */}
-                      <div className="border-t border-stone-800 pt-5 space-y-3">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div>
-                            <h5 className="font-bold text-sm text-white flex items-center gap-2">
-                              <Users className="w-4 h-4 text-emerald-400" />
-                              Bảng Kiểm Chứng Thao Tác Từng User (User-Level Funnel Audit)
-                            </h5>
-                            <p className="text-xs text-stone-400 mt-0.5">
-                              Minh chứng công thức: Mỗi User chỉ nhận giá trị nhị phân <strong>+1</strong> (nếu có thao tác) hoặc <strong>0</strong> (nếu không thao tác).
-                            </p>
-                          </div>
-                          <span className="text-xs font-mono text-stone-400 bg-stone-900 px-2 py-1 rounded border border-stone-800">
-                            {usersList.length} User{usersList.length > 1 ? 's' : ''} đã ghi nhận
-                          </span>
-                        </div>
-
-                        <div className="bg-stone-900/60 rounded-xl border border-stone-800 overflow-x-auto">
-                          <table className="w-full text-left border-collapse text-xs whitespace-nowrap">
-                            <thead>
-                              <tr className="bg-stone-900 border-b border-stone-800 text-stone-400 uppercase text-[10px] font-mono tracking-wider">
-                                <th className="p-3">User ID</th>
-                                <th className="p-3 text-center">Tầng 1 (Vào trang)</th>
-                                <th className="p-3 text-center">Tầng 2 (Xem/chọn SP)</th>
-                                <th className="p-3 text-center">Tầng 3 (Thêm giỏ)</th>
-                                <th className="p-3 text-center">Tầng 4 (Checkout)</th>
-                                <th className="p-3 text-center">Tầng 5 (Mua hàng)</th>
-                                <th className="p-3 text-right">Tổng Chi ($)</th>
-                                <th className="p-3">Trạng thái phễu</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-stone-900 font-mono">
-                              {usersList.length === 0 ? (
-                                <tr>
-                                  <td colSpan={8} className="p-6 text-center text-stone-500 font-sans">
-                                    Chưa có dữ liệu người dùng. Thao tác trên web (chọn màu, thêm giỏ, thanh toán) để kiểm chứng phễu.
+                          {/* Compact 4-Column Step Table with visual retention bars */}
+                          <div className="bg-stone-950/80 border border-stone-800 rounded-xl overflow-hidden">
+                            <table className="w-full text-left border-collapse text-xs">
+                              <thead>
+                                <tr className="bg-stone-900/60 text-stone-400 uppercase text-[10px] font-mono tracking-wider border-b border-stone-800">
+                                  <th className="p-3">Tầng Phễu</th>
+                                  <th className="p-3">Hành Vi Đo Lường (+1 nếu có)</th>
+                                  <th className="p-3 text-center">Số User (+1/người)</th>
+                                  <th className="p-3 text-right pr-6">% Giữ Chân (Retention)</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-stone-900 font-mono text-[11px]">
+                                <tr className="hover:bg-stone-900/40">
+                                  <td className="p-3 font-semibold text-emerald-400">01. Vào Trang</td>
+                                  <td className="p-3 text-stone-300 font-sans">Khách truy cập Landing Page (PageView)</td>
+                                  <td className="p-3 text-center text-white font-bold">{u1} khách</td>
+                                  <td className="p-3 text-right pr-6">
+                                    <div className="inline-flex items-center gap-2 font-bold text-emerald-400 justify-end">
+                                      <span>{pct1}%</span>
+                                      <div className="w-16 bg-stone-800 h-1.5 rounded-full overflow-hidden hidden sm:block">
+                                        <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${pct1}%` }} />
+                                      </div>
+                                    </div>
                                   </td>
                                 </tr>
-                              ) : (
-                                usersList.map((u) => (
-                                  <tr key={u.userId} className="hover:bg-stone-900/40 transition-colors">
-                                    <td className="p-3 text-emerald-400 font-bold text-[11px] flex items-center gap-1.5">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                                      {u.userId}
-                                      {u.userId === tracker.getUserId() && (
-                                        <span className="ml-1 text-[9px] bg-emerald-950 text-emerald-300 border border-emerald-800 px-1 rounded font-normal font-sans">
-                                          (Hiện tại)
-                                        </span>
-                                      )}
-                                    </td>
-                                    <td className="p-3 text-center">
-                                      <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-950/80 text-emerald-400 border border-emerald-500/40">
-                                        +1
-                                      </span>
-                                    </td>
-                                    <td className="p-3 text-center">
-                                      {u.hasStage2 > 0 ? (
-                                        <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-cyan-950/80 text-cyan-400 border border-cyan-500/40">
-                                          +1
-                                        </span>
-                                      ) : (
-                                        <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-stone-900 text-stone-600">
-                                          0
-                                        </span>
-                                      )}
-                                    </td>
-                                    <td className="p-3 text-center">
-                                      {u.hasStage3 > 0 ? (
-                                        <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-blue-950/80 text-blue-400 border border-blue-500/40">
-                                          +1
-                                        </span>
-                                      ) : (
-                                        <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-stone-900 text-stone-600">
-                                          0
-                                        </span>
-                                      )}
-                                    </td>
-                                    <td className="p-3 text-center">
-                                      {u.hasStage4 > 0 ? (
-                                        <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-indigo-950/80 text-indigo-400 border border-indigo-500/40">
-                                          +1
-                                        </span>
-                                      ) : (
-                                        <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-stone-900 text-stone-600">
-                                          0
-                                        </span>
-                                      )}
-                                    </td>
-                                    <td className="p-3 text-center">
-                                      {u.hasStage5 > 0 ? (
-                                        <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-950/80 text-amber-400 border border-amber-500/40">
-                                          +1
-                                        </span>
-                                      ) : (
-                                        <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-stone-900 text-stone-600">
-                                          0
-                                        </span>
-                                      )}
-                                    </td>
-                                    <td className="p-3 text-right font-bold text-white">
-                                      {u.revenue > 0 ? `$${u.revenue.toFixed(2)}` : '-'}
-                                    </td>
-                                    <td className="p-3 font-sans text-xs">
-                                      <span
-                                        className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                                          u.hasStage5 > 0
-                                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                                            : u.hasStage3 > 0
-                                            ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
-                                            : 'bg-stone-800 text-stone-400'
-                                        }`}
-                                      >
-                                        {u.statusLabel}
-                                      </span>
+                                <tr className="hover:bg-stone-900/40">
+                                  <td className="p-3 font-semibold text-cyan-400">02. Tương Tác SP</td>
+                                  <td className="p-3 text-stone-300 font-sans">Khám phá, chọn màu sắc, chọn size, inseam</td>
+                                  <td className="p-3 text-center text-white font-bold">{u2} khách</td>
+                                  <td className="p-3 text-right pr-6">
+                                    <div className="inline-flex items-center gap-2 font-bold text-cyan-400 justify-end">
+                                      <span>{pct2}%</span>
+                                      <div className="w-16 bg-stone-800 h-1.5 rounded-full overflow-hidden hidden sm:block">
+                                        <div className="bg-cyan-500 h-full rounded-full" style={{ width: `${pct2}%` }} />
+                                      </div>
+                                    </div>
+                                  </td>
+                                </tr>
+                                <tr className="hover:bg-stone-900/40">
+                                  <td className="p-3 font-semibold text-blue-400">03. Thêm Giỏ</td>
+                                  <td className="p-3 text-stone-300 font-sans">Bấm nút "Add to Cart" hoặc mở giỏ hàng</td>
+                                  <td className="p-3 text-center text-white font-bold">{u3} khách</td>
+                                  <td className="p-3 text-right pr-6">
+                                    <div className="inline-flex items-center gap-2 font-bold text-blue-400 justify-end">
+                                      <span>{pct3}%</span>
+                                      <div className="w-16 bg-stone-800 h-1.5 rounded-full overflow-hidden hidden sm:block">
+                                        <div className="bg-blue-500 h-full rounded-full" style={{ width: `${pct3}%` }} />
+                                      </div>
+                                    </div>
+                                  </td>
+                                </tr>
+                                <tr className="hover:bg-stone-900/40">
+                                  <td className="p-3 font-semibold text-indigo-400">04. Checkout</td>
+                                  <td className="p-3 text-stone-300 font-sans">Bấm thanh toán, mở form điền địa chỉ giao hàng</td>
+                                  <td className="p-3 text-center text-white font-bold">{u4} khách</td>
+                                  <td className="p-3 text-right pr-6">
+                                    <div className="inline-flex items-center gap-2 font-bold text-indigo-400 justify-end">
+                                      <span>{pct4}%</span>
+                                      <div className="w-16 bg-stone-800 h-1.5 rounded-full overflow-hidden hidden sm:block">
+                                        <div className="bg-indigo-500 h-full rounded-full" style={{ width: `${pct4}%` }} />
+                                      </div>
+                                    </div>
+                                  </td>
+                                </tr>
+                                <tr className="hover:bg-stone-900/40">
+                                  <td className="p-3 font-semibold text-amber-400">05. Mua Hàng</td>
+                                  <td className="p-3 text-stone-300 font-sans">Hoàn tất đặt đơn hàng thành công (Purchase)</td>
+                                  <td className="p-3 text-center text-amber-400 font-bold">{u5} đơn</td>
+                                  <td className="p-3 text-right pr-6">
+                                    <div className="inline-flex items-center gap-2 font-bold text-amber-400 justify-end">
+                                      <span>{pct5}%</span>
+                                      <div className="w-16 bg-stone-800 h-1.5 rounded-full overflow-hidden hidden sm:block">
+                                        <div className="bg-amber-400 h-full rounded-full" style={{ width: `${pct5}%` }} />
+                                      </div>
+                                    </div>
+                                  </td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* SUB-VIEW 2: USER AUDIT MATRIX */}
+                      {funnelSubTab === 'users' && (
+                        <div className="bg-stone-950/80 border border-stone-800 rounded-xl overflow-hidden space-y-0">
+                          <div className="max-h-[320px] overflow-y-auto">
+                            <table className="w-full text-left border-collapse text-xs whitespace-nowrap">
+                              <thead>
+                                <tr className="bg-stone-900/70 text-stone-400 uppercase text-[10px] font-mono tracking-wider sticky top-0 border-b border-stone-800">
+                                  <th className="p-3">User ID</th>
+                                  <th className="p-3 text-center">01. Vào Trang</th>
+                                  <th className="p-3 text-center">02. Xem/Chọn SP</th>
+                                  <th className="p-3 text-center">03. Thêm Giỏ</th>
+                                  <th className="p-3 text-center">04. Checkout</th>
+                                  <th className="p-3 text-center">05. Mua Hàng</th>
+                                  <th className="p-3 text-right">Chi Tiêu ($)</th>
+                                  <th className="p-3">Dừng Lại Tại</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-stone-900 font-mono text-[11px]">
+                                {usersList.length === 0 ? (
+                                  <tr>
+                                    <td colSpan={8} className="p-6 text-center text-stone-500 font-sans">
+                                      Chưa có dữ liệu người dùng. Thao tác trên web (chọn màu, thêm giỏ, thanh toán) để kiểm tra tracking.
                                     </td>
                                   </tr>
-                                ))
-                              )}
-                            </tbody>
-                            {usersList.length > 0 && (
-                              <tfoot>
-                                <tr className="bg-stone-900/90 font-bold text-stone-200 border-t border-stone-700 text-xs">
-                                  <td className="p-3 text-emerald-400">TỔNG USER ĐẠT (+1/người)</td>
-                                  <td className="p-3 text-center text-emerald-400">{u1} ({pct1}%)</td>
-                                  <td className="p-3 text-center text-cyan-400">{u2} ({pct2}%)</td>
-                                  <td className="p-3 text-center text-blue-400">{u3} ({pct3}%)</td>
-                                  <td className="p-3 text-center text-indigo-400">{u4} ({pct4}%)</td>
-                                  <td className="p-3 text-center text-amber-400">{u5} ({pct5}%)</td>
-                                  <td className="p-3 text-right text-emerald-400">${totalRevenue.toFixed(2)}</td>
-                                  <td className="p-3 text-stone-400 font-sans text-[11px]">
-                                    CR Đáy Phễu: {cr}%
-                                  </td>
-                                </tr>
-                              </tfoot>
-                            )}
-                          </table>
+                                ) : (
+                                  usersList.map((u) => (
+                                    <tr key={u.userId} className="hover:bg-stone-900/40 transition-colors">
+                                      <td className="p-3 text-emerald-400 font-bold flex items-center gap-1.5">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></span>
+                                        <span className="truncate max-w-[130px]">{u.userId}</span>
+                                        {u.userId === tracker.getUserId() && (
+                                          <span className="text-[9px] bg-emerald-950 text-emerald-300 border border-emerald-800 px-1 rounded font-normal font-sans">
+                                            Hiện tại
+                                          </span>
+                                        )}
+                                      </td>
+                                      <td className="p-3 text-center">
+                                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-950/80 text-emerald-400 border border-emerald-500/40">
+                                          +1
+                                        </span>
+                                      </td>
+                                      <td className="p-3 text-center">
+                                        {u.hasStage2 > 0 ? (
+                                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-cyan-950/80 text-cyan-400 border border-cyan-500/40">
+                                            +1
+                                          </span>
+                                        ) : (
+                                          <span className="text-stone-600">0</span>
+                                        )}
+                                      </td>
+                                      <td className="p-3 text-center">
+                                        {u.hasStage3 > 0 ? (
+                                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-950/80 text-blue-400 border border-blue-500/40">
+                                            +1
+                                          </span>
+                                        ) : (
+                                          <span className="text-stone-600">0</span>
+                                        )}
+                                      </td>
+                                      <td className="p-3 text-center">
+                                        {u.hasStage4 > 0 ? (
+                                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-950/80 text-indigo-400 border border-indigo-500/40">
+                                            +1
+                                          </span>
+                                        ) : (
+                                          <span className="text-stone-600">0</span>
+                                        )}
+                                      </td>
+                                      <td className="p-3 text-center">
+                                        {u.hasStage5 > 0 ? (
+                                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-950/80 text-amber-400 border border-amber-500/40">
+                                            +1
+                                          </span>
+                                        ) : (
+                                          <span className="text-stone-600">0</span>
+                                        )}
+                                      </td>
+                                      <td className="p-3 text-right font-bold text-white">
+                                        {u.revenue > 0 ? `$${u.revenue.toFixed(2)}` : '-'}
+                                      </td>
+                                      <td className="p-3 font-sans text-xs">
+                                        <span
+                                          className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                                            u.hasStage5 > 0
+                                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                                              : u.hasStage3 > 0
+                                              ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
+                                              : 'bg-stone-800 text-stone-400'
+                                          }`}
+                                        >
+                                          {u.statusLabel}
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  ))
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+                          {usersList.length > 0 && (
+                            <div className="bg-stone-900/90 px-4 py-2.5 border-t border-stone-800 flex items-center justify-between text-xs font-mono">
+                              <span className="text-stone-400">Tổng cộng: <strong className="text-white">{usersList.length} users</strong></span>
+                              <span className="text-emerald-400 font-bold">Tổng doanh thu: ${totalRevenue.toFixed(2)} (CR: {cr}%)</span>
+                            </div>
+                          )}
                         </div>
-                      </div>
+                      )}
                     </div>
                   </>
                 );
               })()}
-
-              {/* Trả lời trực tiếp: Tracking hiện tại đã đủ phân tích chưa? */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-stone-950 p-5 rounded-2xl border border-stone-800 space-y-3">
-                  <h4 className="font-bold text-sm text-white flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                    Đã đủ dữ liệu để tối ưu Conversion Rate (CR):
-                  </h4>
-                  <ul className="text-xs text-stone-300 space-y-2 list-disc pl-4 leading-relaxed">
-                    <li>
-                      <strong>Tỷ lệ rớt phễu (Drop-off Rate)</strong>: Đo lường chính xác khách rớt ở bước nào (Xem sản phẩm &rarr; Thêm giỏ &rarr; Checkout).
-                    </li>
-                    <li>
-                      <strong>Tương tác Review ("Show more")</strong>: Đo lường mức độ ảnh hưởng của Social Proof đến quyết định mua hàng.
-                    </li>
-                    <li>
-                      <strong>Hiệu quả Nút Sticky bên hông</strong>: Tracking sự kiện <code className="text-emerald-400">floating_checkout_click</code> giúp đo lường tỷ lệ mua từ nút chạy theo màn hình.
-                    </li>
-                  </ul>
-                </div>
-
-                <div className="bg-stone-950 p-5 rounded-2xl border border-stone-800 space-y-3">
-                  <h4 className="font-bold text-sm text-white flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                    Đã đủ dữ liệu để tối ưu Average Order Value (AOV):
-                  </h4>
-                  <ul className="text-xs text-stone-300 space-y-2 list-disc pl-4 leading-relaxed">
-                    <li>
-                      <strong>Tương tác Upsell Box ("EXTRA 30% OFF")</strong>: Theo dõi sự kiện <code className="text-emerald-400">upsell_impression</code> và <code className="text-emerald-400">upsell_click</code> khi khách bấm "Select now".
-                    </li>
-                    <li>
-                      <strong>Hành vi tăng giảm số lượng</strong>: Sự kiện <code className="text-emerald-400">cart_quantity_change</code> ghi nhận khi khách bấm nút cộng (+) để mua 2-4 cái.
-                    </li>
-                    <li>
-                      <strong>Giá trị trung bình đơn (AOV) & UPT</strong>: Bắn về Facebook Pixel & GA4 với trường <code className="text-emerald-400">value</code> và <code className="text-emerald-400">num_items</code> chuẩn e-commerce.
-                    </li>
-                  </ul>
-                </div>
-              </div>
             </div>
           )}
 
@@ -1455,66 +1190,190 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
 
           {activeTab === 'guide' && (
             <div className="h-full overflow-y-auto space-y-4 pr-2 text-sm text-stone-300">
-              <div className="bg-stone-950 p-5 rounded-2xl border border-stone-800">
-                <h4 className="font-bold text-base text-white mb-2">
-                  Danh sách sự kiện đã gắn trên Landing Page StretchActive™:
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-                  <div className="bg-stone-900/70 p-3 rounded-xl border border-stone-800">
-                    <div className="font-mono text-xs font-bold text-emerald-400">1. page_view / PageView</div>
-                    <div className="text-xs text-stone-400 mt-1">
-                      Bắn ngay khi tải trang, bao gồm URL, page title, referrer.
-                    </div>
+              {/* Header Action Bar for Document Export */}
+              <div className="bg-stone-950 p-4 rounded-xl border border-stone-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-emerald-400" />
+                    <h4 className="font-bold text-sm text-white">
+                      Tài Liệu Kế Hoạch Tracking & Chiến Lược Dữ Liệu
+                    </h4>
+                    <span className="text-[10px] bg-stone-800 text-stone-300 font-mono px-2 py-0.5 rounded">
+                      v1.0 Docs
+                    </span>
                   </div>
-                  <div className="bg-stone-900/70 p-3 rounded-xl border border-stone-800">
-                    <div className="font-mono text-xs font-bold text-emerald-400">2. view_item / ViewContent</div>
-                    <div className="text-xs text-stone-400 mt-1">
-                      Bắn với đầy đủ thông tin: ID, Name, Style, Color, Size, Price, Currency.
-                    </div>
+                  <p className="text-xs text-stone-400 mt-1">
+                    Đã lưu tại file <code className="text-emerald-400 font-mono">/docs/TRACKING_DOCUMENTATION.md</code> trong mã nguồn dự án.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={handleCopyDoc}
+                    className="px-3 py-1.5 bg-stone-800 hover:bg-stone-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer border border-stone-700"
+                  >
+                    {docCopied ? (
+                      <>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-emerald-400">Đã sao chép!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Sao chép Markdown</span>
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={handleDownloadDoc}
+                    className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-stone-950 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm shadow-emerald-500/20"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Tải file .md</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Section 1: KPI Framework */}
+              <div className="bg-stone-950 p-5 rounded-2xl border border-stone-800 space-y-3">
+                <div className="flex items-center justify-between border-b border-stone-800 pb-2.5">
+                  <h4 className="font-bold text-sm text-white flex items-center gap-2">
+                    <span className="w-1.5 h-4 bg-emerald-400 rounded-full"></span>
+                    I. Khung Chỉ Số & Mục Tiêu Đo Lường Doanh Nghiệp
+                  </h4>
+                  <span className="text-[11px] font-mono text-stone-400">North Star: Net Revenue Per Visitor (RPV)</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
+                  <div className="bg-stone-900/60 p-3 rounded-xl border border-stone-800">
+                    <div className="text-[10px] text-stone-400 uppercase font-mono">Tỷ Lệ Chuyển Đổi (CR)</div>
+                    <div className="text-base font-bold font-mono text-emerald-400 mt-0.5">3.5% – 5.0%</div>
+                    <div className="text-[11px] text-stone-400 mt-1">Benchmark D2C thời trang</div>
                   </div>
-                  <div className="bg-stone-900/70 p-3 rounded-xl border border-stone-800">
-                    <div className="font-mono text-xs font-bold text-emerald-400">3. customize_product</div>
-                    <div className="text-xs text-stone-400 mt-1">
-                      Bắn khi khách đổi ống quần (Straight / Jogger), đổi màu sắc hoặc đổi size.
-                    </div>
+                  <div className="bg-stone-900/60 p-3 rounded-xl border border-stone-800">
+                    <div className="text-[10px] text-stone-400 uppercase font-mono">Giá Trị Đơn TB (AOV)</div>
+                    <div className="text-base font-bold font-mono text-cyan-400 mt-0.5">&gt; $85.00</div>
+                    <div className="text-[11px] text-stone-400 mt-1">Nhờ Combo 2+1 & 3+2</div>
                   </div>
-                  <div className="bg-stone-900/70 p-3 rounded-xl border border-stone-800">
-                    <div className="font-mono text-xs font-bold text-emerald-400">4. select_bundle</div>
-                    <div className="text-xs text-stone-400 mt-1">
-                      Bắn khi khách chọn gói 1 quần, combo 2 quần hoặc Mua 3 Tặng 1.
-                    </div>
+                  <div className="bg-stone-900/60 p-3 rounded-xl border border-stone-800">
+                    <div className="text-[10px] text-stone-400 uppercase font-mono">Quần Trên Đơn (UPT)</div>
+                    <div className="text-base font-bold font-mono text-blue-400 mt-0.5">&gt; 2.2 chiếc</div>
+                    <div className="text-[11px] text-stone-400 mt-1">Tối ưu chi phí fulfillment</div>
                   </div>
-                  <div className="bg-stone-900/70 p-3 rounded-xl border border-stone-800">
-                    <div className="font-mono text-xs font-bold text-emerald-400">5. add_to_cart / AddToCart</div>
-                    <div className="text-xs text-stone-400 mt-1">
-                      Bắn khi ấn nút mua, chứa mảng items, value, currency, bundle_title.
-                    </div>
-                  </div>
-                  <div className="bg-stone-900/70 p-3 rounded-xl border border-stone-800">
-                    <div className="font-mono text-xs font-bold text-emerald-400">6. begin_checkout / InitiateCheckout</div>
-                    <div className="text-xs text-stone-400 mt-1">
-                      Bắn khi mở form điền thông tin đặt hàng hoặc nhấn Tiến hành thanh toán.
-                    </div>
-                  </div>
-                  <div className="bg-stone-900/70 p-3 rounded-xl border border-stone-800">
-                    <div className="font-mono text-xs font-bold text-emerald-400">7. add_shipping_info</div>
-                    <div className="text-xs text-stone-400 mt-1">
-                      Bắn khi khách hoàn thành nhập địa chỉ giao hàng và phương thức ship.
-                    </div>
-                  </div>
-                  <div className="bg-stone-900/70 p-3 rounded-xl border border-stone-800">
-                    <div className="font-mono text-xs font-bold text-emerald-400">8. purchase / CompletePayment</div>
-                    <div className="text-xs text-stone-400 mt-1">
-                      Bắn khi hoàn tất đơn hàng với Transaction ID, Revenue, Coupon, Content IDs.
-                    </div>
+                  <div className="bg-stone-900/60 p-3 rounded-xl border border-stone-800">
+                    <div className="text-[10px] text-stone-400 uppercase font-mono">Click Ưu Đãi Upsell</div>
+                    <div className="text-base font-bold font-mono text-rose-400 mt-0.5">28% – 35%</div>
+                    <div className="text-[11px] text-stone-400 mt-1">Tăng thêm +$9.95/đơn</div>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-stone-950 p-5 rounded-2xl border border-stone-800">
-                <h4 className="font-bold text-base text-white mb-2">Cách nhập vào Google Tag Manager (GTM):</h4>
-                <p className="text-xs text-stone-400 leading-relaxed">
-                  Trong Google Tag Manager, bạn chỉ cần tạo <strong>Custom Event Trigger</strong> với tên sự kiện tương ứng (ví dụ: <code className="text-emerald-400">add_to_cart</code>, <code className="text-emerald-400">begin_checkout</code>, <code className="text-emerald-400">purchase</code>). Các biến số như <code className="text-emerald-400">ecommerce.value</code>, <code className="text-emerald-400">ecommerce.currency</code>, <code className="text-emerald-400">ecommerce.items</code> đã được format chuẩn theo chuẩn GA4 Enhanced Ecommerce Specification!
+              {/* Section 2: Event Dictionary Matrix */}
+              <div className="bg-stone-950 p-5 rounded-2xl border border-stone-800 space-y-3">
+                <div className="flex items-center justify-between border-b border-stone-800 pb-2.5">
+                  <h4 className="font-bold text-sm text-white flex items-center gap-2">
+                    <span className="w-1.5 h-4 bg-cyan-400 rounded-full"></span>
+                    II. Ma Trận Dữ Liệu Sự Kiện Đã Gắn Trên Landing Page (14 Events)
+                  </h4>
+                  <span className="text-[11px] text-emerald-400 font-mono">4-in-1 Data Router Active</span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-stone-900/80 text-stone-400 uppercase text-[10px] font-mono tracking-wider border-b border-stone-800">
+                        <th className="p-2.5">Tên Sự Kiện (GA4/GTM)</th>
+                        <th className="p-2.5">Hành Vi Kích Hoạt (Trigger)</th>
+                        <th className="p-2.5">Meta Pixel</th>
+                        <th className="p-2.5">TikTok Pixel</th>
+                        <th className="p-2.5">Payload Cốt Lõi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-900 font-mono text-[11px]">
+                      <tr className="hover:bg-stone-900/40">
+                        <td className="p-2.5 text-emerald-400 font-bold">page_view</td>
+                        <td className="p-2.5 text-stone-300 font-sans">Tải trang lần đầu</td>
+                        <td className="p-2.5 text-blue-400">PageView</td>
+                        <td className="p-2.5 text-indigo-400">PageView</td>
+                        <td className="p-2.5 text-stone-400 font-sans">URL, Page Title, Device</td>
+                      </tr>
+                      <tr className="hover:bg-stone-900/40">
+                        <td className="p-2.5 text-emerald-400 font-bold">view_item</td>
+                        <td className="p-2.5 text-stone-300 font-sans">Xem khối sản phẩm StretchActive</td>
+                        <td className="p-2.5 text-blue-400">ViewContent</td>
+                        <td className="p-2.5 text-indigo-400">ViewContent</td>
+                        <td className="p-2.5 text-stone-400 font-sans">Item ID, Style, Price ($39.95)</td>
+                      </tr>
+                      <tr className="hover:bg-stone-900/40">
+                        <td className="p-2.5 text-emerald-400 font-bold">customize_product</td>
+                        <td className="p-2.5 text-stone-300 font-sans">Đổi màu sắc, size eo hoặc kiểu ống</td>
+                        <td className="p-2.5 text-stone-400 font-sans">CustomEvent</td>
+                        <td className="p-2.5 text-stone-400 font-sans">ClickButton</td>
+                        <td className="p-2.5 text-stone-400 font-sans">Color, Size, Style</td>
+                      </tr>
+                      <tr className="hover:bg-stone-900/40">
+                        <td className="p-2.5 text-emerald-400 font-bold">customize_inseam</td>
+                        <td className="p-2.5 text-stone-300 font-sans">Chọn chiều dài ống quần (Inseam)</td>
+                        <td className="p-2.5 text-stone-400 font-sans">CustomEvent</td>
+                        <td className="p-2.5 text-stone-400 font-sans">ClickButton</td>
+                        <td className="p-2.5 text-stone-400 font-sans">Inseam: 28, 30, 32, 34</td>
+                      </tr>
+                      <tr className="hover:bg-stone-900/40">
+                        <td className="p-2.5 text-emerald-400 font-bold">select_bundle</td>
+                        <td className="p-2.5 text-stone-300 font-sans">Chọn gói 1 quần, 2+1, 3+2</td>
+                        <td className="p-2.5 text-stone-400 font-sans">CustomEvent</td>
+                        <td className="p-2.5 text-stone-400 font-sans">SelectContent</td>
+                        <td className="p-2.5 text-stone-400 font-sans">Bundle ID, Saving %</td>
+                      </tr>
+                      <tr className="hover:bg-stone-900/40">
+                        <td className="p-2.5 text-emerald-400 font-bold">add_to_cart</td>
+                        <td className="p-2.5 text-stone-300 font-sans">Bấm nút "Add to Cart" / Mua ngay</td>
+                        <td className="p-2.5 text-blue-400">AddToCart</td>
+                        <td className="p-2.5 text-indigo-400">AddToCart</td>
+                        <td className="p-2.5 text-stone-400 font-sans">Items Array, Value, Currency</td>
+                      </tr>
+                      <tr className="hover:bg-stone-900/40">
+                        <td className="p-2.5 text-emerald-400 font-bold">upsell_impression</td>
+                        <td className="p-2.5 text-stone-300 font-sans">Hộp ưu đãi +30% xuất hiện trong giỏ</td>
+                        <td className="p-2.5 text-stone-400 font-sans">CustomEvent</td>
+                        <td className="p-2.5 text-stone-400 font-sans">ViewContent</td>
+                        <td className="p-2.5 text-stone-400 font-sans">Promo ID, Discount: 30%</td>
+                      </tr>
+                      <tr className="hover:bg-stone-900/40">
+                        <td className="p-2.5 text-emerald-400 font-bold">upsell_click</td>
+                        <td className="p-2.5 text-stone-300 font-sans">Bấm nút "Select now" trong giỏ hàng</td>
+                        <td className="p-2.5 text-stone-400 font-sans">CustomEvent</td>
+                        <td className="p-2.5 text-stone-400 font-sans">ClickButton</td>
+                        <td className="p-2.5 text-stone-400 font-sans">Value: +$9.95, Target Item</td>
+                      </tr>
+                      <tr className="hover:bg-stone-900/40">
+                        <td className="p-2.5 text-emerald-400 font-bold">begin_checkout</td>
+                        <td className="p-2.5 text-stone-300 font-sans">Bấm Proceed to Checkout</td>
+                        <td className="p-2.5 text-blue-400">InitiateCheckout</td>
+                        <td className="p-2.5 text-indigo-400">InitiateCheckout</td>
+                        <td className="p-2.5 text-stone-400 font-sans">Cart Value, Items Count</td>
+                      </tr>
+                      <tr className="hover:bg-stone-900/40">
+                        <td className="p-2.5 text-emerald-400 font-bold">add_shipping_info</td>
+                        <td className="p-2.5 text-stone-300 font-sans">Điền địa chỉ giao hàng</td>
+                        <td className="p-2.5 text-blue-400">AddShippingInfo</td>
+                        <td className="p-2.5 text-indigo-400">AddShippingInfo</td>
+                        <td className="p-2.5 text-stone-400 font-sans">Shipping Tier (Free/Express)</td>
+                      </tr>
+                      <tr className="hover:bg-stone-900/40">
+                        <td className="p-2.5 text-emerald-400 font-bold">purchase</td>
+                        <td className="p-2.5 text-amber-400 font-sans font-bold">Hoàn tất đơn hàng thành công</td>
+                        <td className="p-2.5 text-blue-400 font-bold">Purchase</td>
+                        <td className="p-2.5 text-indigo-400 font-bold">CompletePayment</td>
+                        <td className="p-2.5 text-stone-400 font-sans">Transaction ID, Value, Currency</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* GTM Setup Guidance */}
+              <div className="bg-stone-950 p-4 rounded-xl border border-stone-800">
+                <h5 className="font-bold text-xs text-white mb-1">Quy tắc tích hợp vào Google Tag Manager (GTM):</h5>
+                <p className="text-xs text-stone-400 leading-relaxed font-sans">
+                  Tạo Trigger loại <strong>Custom Event</strong> với Event Name trùng khớp (ví dụ: <code className="text-emerald-400 font-mono">add_to_cart</code>, <code className="text-emerald-400 font-mono">begin_checkout</code>, <code className="text-emerald-400 font-mono">purchase</code>). Các biến số như <code className="text-emerald-400 font-mono">ecommerce.value</code>, <code className="text-emerald-400 font-mono">ecommerce.currency</code>, <code className="text-emerald-400 font-mono">ecommerce.items</code> đã chuẩn hóa theo chuẩn GA4 Enhanced Ecommerce.
                 </p>
               </div>
             </div>
