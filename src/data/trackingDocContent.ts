@@ -1,129 +1,139 @@
-export const TRACKING_DOCUMENTATION_MD = `# TÀI LIỆU KẾ HOẠCH TRACKING & CHIẾN LƯỢC TỐI ƯU DỮ LIỆU
+export const TRACKING_DOCUMENTATION_MD = `# TÀI LIỆU KẾ HOẠCH TRACKING & PHÂN TÍCH HÀNH VI NGƯỜI DÙNG
 **Dự án:** StretchActive™ Ultra-Stretch Ice Silk Pants (D2C E-Commerce Landing Page)  
-**Tác giả:** Đội ngũ Kỹ thuật & Data Tracking  
-**Phiên bản:** v1.0 — Chuẩn tích hợp GTM / GA4 / Meta Pixel / TikTok Pixel  
-**Ngày cập nhật:** Tháng 10/2026  
+**Vai trò:** Tài liệu Đặc tả Dữ liệu Dành cho Data Analyst / Business Analyst  
+**Phiên bản:** v2.1 (Cập nhật chính xác cơ chế Mua Nhiều Giảm Giá - Buy More Save More)  
 
 ---
 
-## I. MỤC TIÊU ĐO LƯỜNG & KHUNG CHỈ SỐ DOANH NGHIỆP (MEASUREMENT FRAMEWORK)
+## I. MỤC TIÊU ĐO LƯỜNG & KHUNG CHỈ SỐ DOANH NGHIỆP (BUSINESS METRICS FRAMEWORK)
 
-### 1. North Star Metric & Mục tiêu cốt lõi
-* **North Star Metric:** **Net Revenue per Visitor (Doanh thu thuần trên mỗi lượt truy cập - RPV)** = \`(Conversion Rate × AOV)\`.
-* **Mục tiêu đo lường:** Không chỉ ghi nhận số liệu bề nổi (Pageview, Click), mà phải giải mã chính xác **rào cản tâm lý người mua**, **hiệu quả gói combo (Bundle Tier)** và **độ hấp thụ của ưu đãi Upsell (+30%)\`**.
+### 1. Cặp Chỉ Số North Star (North Star Metrics)
+Dự án xác định **cặp chỉ số song hành North Star** làm kim chỉ nam đo lường hiệu quả kinh doanh của toàn bộ Landing Page:
 
-### 2. Tháp chỉ số phân cấp (KPI Hierarchy)
+Doanh Thu Kỳ Vọng / Lượt Ghé Thăm (RPV) = CR × AOV
 
-| Cấp độ | Tên chỉ số | Công thức / Ý nghĩa | Ngưỡng mục tiêu (Benchmark D2C) |
-| :--- | :--- | :--- | :--- |
-| **Tier 1: Macro KPI** | **Overall CR** | \`Users Purchase / Total Unique Visitors\` | 3.5% – 5.0% |
-| | **AOV** | \`Tổng Doanh thu / Số đơn hàng thành công\` | > $85.00 |
-| | **UPT** | \`Tổng số quần bán / Số đơn hàng\` | > 2.2 chiếc/đơn |
-| **Tier 2: Funnel KPI** | **Product Engagement Rate** | \`Users (Xem/Chọn Màu/Size/Bundle) / Visitors\` | > 65% |
-| | **Add-to-Cart (ATC) Rate** | \`Users Thêm giỏ / Unique Visitors\` | > 18% – 25% |
-| | **Cart-to-Checkout Rate** | \`Users Bắt đầu Checkout / Users Thêm giỏ\` | > 60% |
-| | **Checkout Completion Rate** | \`Users Hoàn tất đơn / Users Bắt đầu Checkout\` | > 70% |
-| **Tier 3: Micro/CRO KPI**| **Upsell Take Rate** | \`Clicks 'Select now' / Hiển thị Box Upsell giỏ\` | > 28% – 35% |
-| | **Bundle Tier Mix** | Tỷ trọng đơn chọn Bundle 2+1 & Bundle 3+2 | > 60% tổng đơn hàng |
-| | **Review Interaction Rate** | Tỷ lệ khách lọc sao / xem đánh giá thực tế | > 15% |
+* **CR (Conversion Rate - Tỷ lệ chuyển đổi):** Đo lường năng lực thuyết phục của Landing Page trong việc biến một lượt ghé thăm (Visitor) thành người mua hàng thực tế (Buyer).
+* **AOV (Average Order Value - Giá trị đơn hàng trung bình):** Đo lường quy mô giá trị kinh tế trung bình của mỗi đơn hàng, phản ánh hiệu quả của chính sách kích cầu mua nhiều quần (*Buy More Save More: Mua chiếc tiếp theo giảm thêm 25% & Miễn phí vận chuyển từ $50*) kết hợp cùng ưu đãi nâng cấp tính năng trong giỏ hàng (*In-Cart Upsell +$9.95*).
 
 ---
 
-## II. KIẾN TRÚC HỆ THỐNG TRACKING (TECH STACK & ARCHITECTURE)
+### 2. Tháp Chỉ Số Phân Cấp Dành Cho Data Analyst
 
-\`\`\`
-                [ Khách hàng tương tác trên Landing Page ]
-                                    │
-                                    ▼
-                     [ tracking.ts (Event Bus Router) ]
-    ┌───────────────────────┬───────────────────────┬───────────────────────┐
-    ▼                       ▼                       ▼                       ▼
-[ Google Tag Manager ]  [ Google Analytics 4 ]  [ Meta Pixel (CAPI) ]   [ TikTok Pixel ]
-  dataLayer.push()        gtag('event', ...)       fbq('track', ...)       ttq.track(...)
-    │                       │                       │                       │
-    └───────────────────────┴───────────────────────┴───────────────────────┘
-                                    │
-                                    ▼
-               [ Live Tracking Inspector & Audit Console ]
-            (Lưu trữ localStorage, Phân tích phễu nhị phân +1/0)
-\`\`\`
-
-### 1. Cơ chế Định danh người dùng (Identity Resolution)
-* **Client-Side Refresh (\`F5\`):** Mỗi lần làm mới trình duyệt, \`userId\` và \`sessionId\` mới được sinh ngẫu nhiên định dạng \`usr_xxxx\` và \`sess_xxxx\`. Giỏ hàng được reset trắng (\`cart = []\`) để bảo đảm trạng thái kiểm thử mới hoàn toàn.
-* **Persistent Event Storage:** Lịch sử sự kiện cũ được nối tiếp (\`append-only\`) vào kho lưu trữ cục bộ, cho phép kiểm chứng hành vi giữa các phiên truy cập khác nhau của cùng thiết bị mà không bị ghi đè dữ liệu.
-* **Quy chuẩn Nhị phân Funnel (+1 / 0):** Mỗi người dùng duy nhất (\`userId\`) chỉ được tính tối đa **1 lần** cho mỗi tầng phễu, triệt tiêu hoàn toàn lỗi đếm trùng sự kiện dẫn đến tỷ lệ ảo > 100%.
+| Cấp độ phân tích | Tên chỉ số | Công thức tính toán | Mục tiêu D2C | Ý nghĩa phân tích kinh doanh |
+| :--- | :--- | :--- | :--- | :--- |
+| **North Star #1** | **Overall CR** | (Số User Mua Hàng / Tổng Số User Vào Trang) × 100% | **3.5% – 5.0%** | Năng lực chốt đơn tổng thể trên toàn bộ hành trình. |
+| **North Star #2** | **AOV** | Tổng Doanh Thu Đơn Hàng / Tổng Số Đơn Hàng Thành Công | **> $60.00 – $85.00** | Giá trị trung bình của mỗi giỏ hàng xuất kho. |
+| **Chỉ số Quy mô** | **UPT (Units Per Order)** | Tổng Số Lượng Quần Bán Ra / Tổng Số Đơn Hàng | **> 1.8 – 2.4 chiếc** | Động lực thúc đẩy AOV nhờ ưu đãi giảm 25% cho chiếc kế tiếp và mốc Free Ship $50. |
+| **Chỉ số Gia tăng** | **Upsell Take Rate** | Số Lần Bấm Mua Upsell / Số Lần Nhìn Thấy Box Upsell | **28% – 35%** | Mức độ hấp dẫn của ưu đãi nâng cấp chống thấm (+30% / $9.95). |
+| **Chỉ số Mua nhiều**| **Multi-Item Order Rate**| (Số Đơn Hàng Mua Từ 2 Quần Trở Lên / Tổng Số Đơn Hàng) × 100% | **> 45%** | Đo lường hiệu quả của chương trình "Buy More Save More". |
+| **Chỉ số Tương tác**| **Product Engagement** | User Chọn Màu, Size, Số Lượng / Tổng Số User Vào Trang | **> 65%** | Mức độ quan tâm và sẵn sàng tìm hiểu sản phẩm. |
+| **Chỉ số Rơi rụng** | **Cart Abandonment Rate**| (User Thêm Giỏ Nhưng Không Mua / Tổng User Thêm Giỏ) × 100% | **< 60%** | Đo lường rào cản tâm lý về giá, phí ship hoặc tính cấp bách. |
+| **Chỉ số Rơi rụng** | **Checkout Drop Rate** | (User Mở Form Nhưng Bỏ Dở / Tổng User Mở Checkout) × 100% | **< 30%** | Đo lường độ phức tạp của form thanh toán và độ tin cậy. |
 
 ---
 
-## III. MA TRẬN DỮ LIỆU SỰ KIỆN (TRACKING EVENT DATA DICTIONARY)
+## II. MA TRẬN TỪ ĐIỂN DỮ LIỆU SỰ KIỆN (ANALYTICAL DATA DICTIONARY)
 
-Hệ thống đã thiết lập chuẩn hóa 100% schema sự kiện tương thích với GA4 E-Commerce, Meta Pixel Standard Events và TikTok Pixel Events:
+Hệ thống sự kiện được thiết kế phục vụ trực tiếp cho việc trích xuất báo cáo, phân khúc khách hàng và phân tích hành vi (User Behavioral Analysis):
 
-| STT | Event Name | Hành động kích hoạt (Trigger) | Meta Pixel | TikTok Pixel | Các tham số Payload bắt buộc |
-| :---: | :--- | :--- | :--- | :--- | :--- |
-| **1** | \`page_view\` | Khi trang tải xong lần đầu | \`PageView\` | \`PageView\` | \`page_title\`, \`page_location\`, \`device_type\` |
-| **2** | \`view_item\` | Khi xem khối sản phẩm StretchActive | \`ViewContent\` | \`ViewContent\` | \`item_id\`, \`item_name\`, \`price\`, \`currency\`, \`style\` |
-| **3** | \`customize_product\` | Chọn đổi màu sắc, size vòng eo hoặc style | \`CustomEvent\` | \`ClickButton\` | \`color\`, \`size\`, \`style\`, \`step: 'configurator'\` |
-| **4** | \`customize_inseam\` | Chọn chiều dài ống quần (Inseam) | \`CustomEvent\` | \`ClickButton\` | \`inseam: '28' \\| '30' \\| '32' \\| '34'\` |
-| **5** | \`select_bundle\` | Bấm chọn gói combo (1 quần, 2+1, 3+2) | \`CustomEvent\` | \`SelectContent\` | \`bundle_id\`, \`bundle_name\`, \`saving_percentage\`, \`price\` |
-| **6** | \`add_to_cart\` | Bấm nút "Add to Cart" hoặc "Claim Offer" | \`AddToCart\` | \`AddToCart\` | \`currency\`, \`value\`, \`items: [{ item_id, quantity, price, size, color }]\` |
-| **7** | \`view_cart\` | Mở thanh trượt giỏ hàng (Cart Drawer) | \`CustomEvent\` | \`ViewContent\` | \`cart_total\`, \`items_count\` |
-| **8** | \`upsell_impression\`| Box ưu đãi độc quyền trong giỏ xuất hiện | \`CustomEvent\` | \`ViewContent\` | \`promo_id: 'UPGRADE-WATER-REPELLENT-30'\`, \`discount: 30\` |
-| **9** | \`upsell_click\` | Bấm "Select now" trong giỏ hàng | \`CustomEvent\` | \`ClickButton\` | \`promo_id\`, \`applied_value: 9.95\`, \`target_item\` |
-| **10**| \`begin_checkout\` | Bấm nút "Proceed to Checkout" trong giỏ | \`InitiateCheckout\`| \`InitiateCheckout\`| \`value\`, \`currency\`, \`num_items\`, \`items: [...]\` |
-| **11**| \`add_shipping_info\`| Điền/Chọn địa chỉ trong Modal Checkout | \`AddShippingInfo\` | \`AddShippingInfo\` | \`shipping_tier: 'free' \\| 'express'\`, \`value\` |
-| **12**| \`add_payment_info\` | Chọn hình thức thanh toán (Thẻ / PayPal) | \`AddPaymentInfo\` | \`AddPaymentInfo\` | \`payment_type: 'credit_card' \\| 'paypal'\` |
-| **13**| \`purchase\` | Bấm xác nhận thanh toán thành công | \`Purchase\` | \`CompletePayment\` | \`transaction_id\`, \`value\`, \`tax\`, \`shipping\`, \`currency: 'USD'\`, \`items: [...]\` |
-| **14**| \`review_interaction\`| Lọc số sao đánh giá (5★, 4★) hoặc xem tab | \`CustomEvent\` | \`SelectContent\` | \`filter_star\`, \`component: 'customer_reviews'\` |
+| STT | Tên Sự Kiện (Event Name) | Hành Vi Người Dùng (User Action) | Mục Đích Phân Tích (Analytical Purpose) | Các Trường Dữ Liệu Đo Lường (Dimensions & Metrics) |
+| :---: | :--- | :--- | :--- | :--- |
+| **1** | \`page_view\` | Khách truy cập vào Landing Page | Đo lường dung lượng khách mới, tỷ lệ giữ chân (Retention) tại cửa ngõ đầu vào. | \`page_title\`, \`device_type\`, \`referrer\`, \`traffic_source\` |
+| **2** | \`view_item\` | Cuộn đến và xem khu vực sản phẩm chính | Xác định tỷ lệ chuyển tiếp từ xem chung sang tìm hiểu sản phẩm chi tiết. | \`item_id\`, \`item_name\`, \`style\`, \`base_price\` ($31.49) |
+| **3** | \`customize_product\` | Nhấp chọn màu sắc, kích thước eo hoặc kiểu dáng | Phân tích thị hiếu mẫu mã (Top Color / Top Size) để tối ưu tồn kho và hình ảnh hiển thị. | \`color\` (Đen/Ghi/Xanh/Rêu), \`size\` (S/M/L/XL/4XL), \`style\` (Straight/Jogger) |
+| **4** | \`customize_inseam\` | Chọn chiều dài ống quần (Inseam) | Đánh giá nhu cầu thể hình khách hàng theo chiều dài chân. | \`inseam\` (Petite, Regular, Tall) |
+| **5** | \`update_quantity\` | Tăng/giảm số lượng quần bằng nút +/- | Đo lường ý định mua số lượng nhiều trước khi bấm thêm giỏ. | \`quantity\` (1, 2, 3, 4...), \`estimated_total\` |
+| **6** | \`add_to_cart\` | Bấm nút "Add to Cart" | Xác định ý định mua hàng rõ ràng (High Purchase Intent) để tính ATC Rate. | \`quantity\`, \`unit_price\`, \`cart_value\`, \`qualifies_for_free_shipping\` |
+| **7** | \`view_cart\` | Mở xem giỏ hàng trượt | Đo lường mức độ kiểm tra lại quyết định chi tiêu trước khi checkout. | \`cart_total\`, \`items_count\`, \`is_free_shipping_eligible\` (đạt $50+) |
+| **8** | \`upsell_impression\`| Box ưu đãi bổ sung xuất hiện trong giỏ | Đo lường số lượt hiển thị cơ hội gia tăng giá trị đơn hàng (Impressions). | \`promo_id\`, \`offer_type: 'cross_sell'\`, \`discount_rate: 30\` |
+| **9** | \`upsell_click\` | Bấm "Select now" nhận ưu đãi nâng cấp | Tính toán trực tiếp tỷ lệ chấp nhận Upsell và tác động cộng dồn vào AOV. | \`applied_value: 9.95\`, \`promo_id\`, \`product_category\` |
+| **10**| \`begin_checkout\` | Bấm tiến hành đặt hàng | Đo lường chuyển dịch từ giỏ hàng sang phễu thanh toán chính thức. | \`checkout_value\`, \`num_items\`, \`applied_discount\` |
+| **11**| \`add_shipping_info\`| Hoàn thành bước nhập địa chỉ giao hàng | Phân tích khu vực địa lý đặt hàng và hình thức vận chuyển được chọn. | \`shipping_tier\` (free/express), \`city\`, \`district\` |
+| **12**| \`add_payment_info\` | Chọn phương thức thanh toán | Phân tích thói quen thanh toán (Thẻ tín dụng / PayPal / COD). | \`payment_method\` (credit_card/paypal), \`has_discount_applied\` |
+| **13**| \`purchase\` | Xác nhận đặt hàng thành công | Sự kiện chốt chặn doanh thu: tính toán chính xác CR, AOV, UPT và Net Revenue. | \`transaction_id\`, \`total_revenue\`, \`num_items\`, \`items_list\` |
+| **14**| \`review_interaction\`| Lọc xem đánh giá 5 sao, 4 sao hoặc ảnh review | Đo lường vai trò của Social Proof (bằng chứng xã hội) đối với quyết định chốt đơn. | \`star_filter\` (5/4/3), \`has_photo_filter\`, \`scroll_depth\` |
 
 ---
 
-## IV. MÔ HÌNH PHÂN TÍCH PHỄU CHUYỂN ĐỔI (FUNNEL MEASUREMENT MODEL)
+## III. MÔ HÌNH PHÂN TÍCH PHỄU CHUYỂN ĐỔI (FUNNEL MEASUREMENT MODEL)
 
-### 1. Phễu 5 Bước Đo Lường Nhị Phân (Binary Funnel)
+### 1. Nguyên Lý Đếm Nhị Phân Dành Cho Data Analyst (+1 / 0)
+Để phản ánh chính xác tỷ lệ chuyển đổi mà không bị biến dạng số liệu khi một người dùng thao tác nhiều lần:
+* **Đơn vị phân tích:** Khách hàng độc nhất (\`Unique User ID\`).
+* **Quy tắc gán giá trị:** Tại mỗi tầng phễu, nếu người dùng có phát sinh tương tác thì ghi nhận **1**, nếu không phát sinh thì ghi nhận **0**.
+* **Ý nghĩa:** Tỷ lệ giữ chân tầng dưới luôn luôn nhỏ hơn hoặc bằng tầng trên, đảm bảo CR không bao giờ vượt quá 100%.
+
 \`\`\`
 [ Tầng 1: Vào Trang (100%) ] ─────── PageView
         │
-        ▼ (Drop-off 1)
-[ Tầng 2: Tương Tác SP ] ────────── view_item / customize / bundle
+        ▼ (Drop-off 1: Tỷ lệ thoát ngay)
+[ Tầng 2: Tương Tác Sản Phẩm ] ──── Xem chi tiết, đổi màu, đổi size, chọn số lượng
         │
-        ▼ (Drop-off 2: Điểm nghẽn phổ biến nhất của E-commerce)
-[ Tầng 3: Thêm Giỏ Hàng ] ───────── add_to_cart
+        ▼ (Drop-off 2: Rào cản cân nhắc mua hàng)
+[ Tầng 3: Thêm Giỏ Hàng ] ───────── Add to Cart
         │
-        ▼ (Drop-off 3)
-[ Tầng 4: Bắt Đầu Checkout ] ────── begin_checkout / add_shipping
+        ▼ (Drop-off 3: Rào cản mở trang thanh toán)
+[ Tầng 4: Bắt Đầu Checkout ] ────── Mở form thanh toán, điền địa chỉ
         │
-        ▼ (Drop-off 4)
-[ Tầng 5: Mua Hàng Thành Công ] ─── purchase (Ghi nhận Doanh thu & AOV)
+        ▼ (Drop-off 4: Rào cản hoàn tất thanh toán)
+[ Tầng 5: Mua Hàng Thành Công ] ─── Purchase (Ghi nhận Doanh thu & AOV)
 \`\`\`
-
-### 2. Thuật toán chẩn đoán điểm nghẽn tự động (Automated CRO Engine)
-Hệ thống tính toán tốc độ hao hụt tương đối tại từng bước:
-Drop Rate = (U_k - U_{k+1}) / U_k
-
-* **Nếu điểm nghẽn tại Tầng 2 ➔ 3 (Rớt > 70%):** Người dùng quan sát sản phẩm nhưng ngần ngại bấm thêm giỏ.  
-  * *Hành động đề xuất:* Nâng cao FOMO (Stock counter còn 4 chiếc), gắn bảo hành "60-Day Wear Test Free Return" ngay sát cụm nút bấm mua.
-* **Nếu điểm nghẽn tại Tầng 3 ➔ 4 (Rớt > 40%):** Khách đã thích sản phẩm nhưng chững lại trong giỏ hàng.  
-  * *Hành động đề xuất:* Bổ sung nút thanh toán nhanh 1-chạm (Apple Pay / Google Pay / PayPal Express) ngay trong Cart Drawer; làm rõ thanh đo tiến trình "Thêm $10 để Free Shipping".
-* **Nếu điểm nghẽn tại Tầng 4 ➔ 5 (Rớt > 30%):** Khách dừng bước ở form điền địa chỉ hoặc nhập thẻ.  
-  * *Hành động đề xuất:* Tinh giản form xuống tối đa 3 trường; làm nổi bật chứng chỉ bảo mật mã hóa SSL 256-bit.
 
 ---
 
-## V. QUY TRÌNH KIỂM THỬ (QA PROTOCOL & AUDIT CHECKLIST)
+### 2. Phương Pháp Chẩn Đoán Điểm Nghẽn Phễu (Bottleneck Diagnosis)
+Data Analyst xác định điểm nghẽn bằng công thức tỷ lệ rơi rụng biên giữa hai bước liền kề:
+Drop-off Rate = (Users_k - Users_{k+1}) / Users_k × 100%
 
-Khi vận hành chiến dịch thực tế, nhân sự Media Buyer / Data Analyst thực hiện kiểm tra 4 bước trên **Live Tracking Inspector**:
+* **Nếu rơi rụng lớn nhất ở Tầng 2 ➔ Tầng 3 (Xem SP ➔ Thêm giỏ):**  
+  * *Chẩn đoán:* Khách quan tâm mẫu mã nhưng do dự về giá hoặc chưa nhận biết ưu đãi mua nhiều giảm giá.  
+  * *Đề xuất Insight:* Làm nổi bật dòng thông báo *"EXTRA 25% OFF FOR NEXT ITEM"* ngay cạnh nút Add to Cart.
+* **Nếu rơi rụng lớn nhất ở Tầng 3 ➔ Tầng 4 (Thêm giỏ ➔ Bắt đầu Checkout):**  
+  * *Chẩn đoán:* Giỏ hàng chưa đạt ngưỡng $50 để được Free Shipping hoặc khách phân vân về phí ship.  
+  * *Đề xuất Insight:* Phân tích xem thanh tiến trình nhắc nhở "Mua thêm 1 chiếc để Free Shipping" có thúc đẩy khách quay lại tăng số lượng không.
+* **Nếu rơi rụng lớn nhất ở Tầng 4 ➔ Tầng 5 (Checkout ➔ Mua hàng):**  
+  * *Chẩn đoán:* Rào cản phương thức thanh toán, độ dài biểu mẫu hoặc thiếu phương thức thanh toán quen thuộc.  
+  * *Đề xuất Insight:* Phân tích tỷ lệ người dùng chọn phương thức thẻ so với PayPal.
 
-1. **Kiểm tra trạng thái kích hoạt Pixel:**
-   * Mở modal console ở góc dưới màn hình.
-   * Xác nhận huy hiệu xanh \`4 Pixels Active (GTM · GA4 · Meta · TikTok)\` đang sáng.
-2. **Kiểm tra luồng sự kiện (Live Event Log):**
-   * Thao tác đổi màu ➔ Kiểm tra event \`customize_product\` xuất hiện ngay lập tức với đủ thông tin màu sắc và kích cỡ.
-   * Thêm giỏ hàng ➔ Kiểm tra event \`add_to_cart\` có chứa đúng mảng \`items\` và \`value\`.
-   * Bấm "Select now" ưu đãi ➔ Kiểm tra event \`upsell_click\` được ghi nhận.
-3. **Kiểm tra tính toàn vẹn của Bảng Phễu Chuyển Đổi:**
-   * Đảm bảo tỷ lệ chuyển đổi không vượt quá 100%.
-   * Xác nhận số lượng User trong tab **"Kiểm Chứng Từng User"** hiển thị chính xác các cờ đánh dấu \`[1]\` hoặc \`[0]\` theo đúng tương tác thực tế của khách hàng.
-4. **Kiểm tra sau khi thanh toán:**
-   * Đảm bảo doanh thu cộng dồn chính xác theo công thức: \`Giá gói Bundle + Phí nâng cấp Upsell (nếu có)\`.
+---
+
+## IV. CÁC HƯỚNG PHÂN TÍCH PHÂN KHÚC NÂNG CAO (SEGMENTATION & INSIGHTS)
+
+Dữ liệu tracking được tổ chức để Data Analyst có thể trả lời trực tiếp 3 bài toán kinh doanh trọng điểm:
+
+### 1. Phân Tích Hiệu Quả Mua Nhiều Giảm Giá (Buy More Save More / Basket Size Analysis)
+* **Câu hỏi phân tích:** *Chính sách giảm thêm 25% cho sản phẩm tiếp theo và Free Ship $50 có thực sự kéo tăng UPT và AOV không?*
+* **Chỉ số đo lường:** Tỷ trọng đơn hàng (% share of orders) và Doanh thu trung bình theo quy mô giỏ:
+  * Đơn hàng mua 1 chiếc ($31.49 + ship)
+  * Đơn hàng mua 2 chiếc (Hưởng giảm 25% chiếc thứ hai + Free Ship)
+  * Đơn hàng mua 3+ chiếc
+* **Ý nghĩa:** Nếu tỷ lệ đơn hàng mua >= 2 chiếc vượt mốc 45%, chính sách chiết khấu số lượng đang vận hành hiệu quả.
+
+### 2. Phân Tích Độ Nhạy Bén Ưu Đãi Bán Thêm (Upsell Elasticity)
+* **Câu hỏi phân tích:** *Ưu đãi nâng cấp chống thấm $9.95 (+30%) giúp tăng trưởng AOV bao nhiêu % so với đơn hàng thuần?*
+* **Chỉ số đo lường:**
+  * Upsell Take Rate = \`upsell_click\` / \`upsell_impression\`.
+  * So sánh AOV giữa nhóm có chọn Upsell và nhóm không chọn Upsell.
+
+### 3. Phân Tích Hành Vi Chọn Thuộc Tính Sản Phẩm (Variant Preference)
+* **Câu hỏi phân tích:** *Màu sắc, kích cỡ và chiều dài ống quần nào được chọn nhiều nhất và có tỷ lệ hoàn tất đơn cao nhất?*
+* **Dữ liệu phân tích:** Đối chiếu tương quan giữa các giá trị \`color\` (Đen, Ghi đá, Xanh navy, Xanh rêu) và \`inseam\` (Petite, Regular, Tall) với sự kiện \`purchase\`.
+* **Ý nghĩa:** Định hướng kế hoạch nhập hàng, sản xuất và bố trí biến thể mặc định xuất hiện đầu tiên trên Landing Page.
+
+---
+
+## V. QUY TRÌNH KIỂM THỬ & ĐỐI SOÁT DỮ LIỆU DÀNH CHO ANALYST (DATA AUDIT PROTOCOL)
+
+Khi thẩm định dữ liệu thu thập được từ phiên thử nghiệm trên **Live Tracking Inspector**:
+
+1. **Đối soát tính nhất quán của mẫu (Sample Size Audit):**  
+   Số lượng User tại mỗi bước phải tuân thủ nghiêm ngặt: U_Visit >= U_Engage >= U_Cart >= U_Checkout >= U_Purchase.
+2. **Kiểm tra công thức North Star CR & AOV:**  
+   * CR = (U_Purchase / U_Visit) × 100% (Chính xác đến 1 chữ số thập phân).  
+   * AOV = Doanh thu tổng / U_Purchase (Trường hợp chưa có đơn mua, hiển thị về $0.00).
+3. **Đối soát doanh thu từng đơn (Transaction Audit):**  
+   Xác minh giá trị \`revenue\` của mỗi đơn mua hàng bằng đúng:  
+   Doanh Thu Đơn = Tiền Quần (Đã Áp Dụng Giảm Giá Số Lượng) + Giá Trị Ưu Đãi Upsell (nếu có).
+4. **Kiểm tra ma trận phân bổ người dùng (User Matrix Audit):**  
+   Mỗi khách hàng thử nghiệm chỉ có 1 dòng đại diện duy nhất trên bảng dữ liệu, với các cờ \`[1]\` hoặc \`[0]\` thể hiện chính xác điểm dừng cuối cùng của khách hàng.
 `;

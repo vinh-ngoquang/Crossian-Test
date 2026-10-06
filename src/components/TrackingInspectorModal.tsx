@@ -927,7 +927,7 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
                           <th className="p-3">Đơn giá ($)</th>
                           <th className="p-3">Tổng ($)</th>
                           <th className="p-3">Tiết kiệm ($)</th>
-                          <th className="p-3">Combo?</th>
+                          <th className="p-3">Mua nhiều (&gt;1)?</th>
                           <th className="p-3">Chi tiết / Offer</th>
                           <th className="p-3">Cổng TT</th>
                           <th className="p-3">Nền tảng</th>
@@ -969,7 +969,7 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
                                 <td className="p-3">
                                   {f.isMultiItem === 'YES' ? (
                                     <span className="bg-emerald-900/60 text-emerald-300 px-1.5 py-0.5 rounded text-[10px] font-bold">
-                                      YES (Combo)
+                                      YES (&gt;1 quần)
                                     </span>
                                   ) : (
                                     <span className="text-stone-500 text-[10px]">NO</span>
@@ -1196,10 +1196,10 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
                   <div className="flex items-center gap-2">
                     <FileText className="w-4 h-4 text-emerald-400" />
                     <h4 className="font-bold text-sm text-white">
-                      Tài Liệu Kế Hoạch Tracking & Chiến Lược Dữ Liệu
+                      Tài Liệu Đặc Tả Tracking & Phân Tích Hành Vi Người Dùng (Data Analyst Focus)
                     </h4>
-                    <span className="text-[10px] bg-stone-800 text-stone-300 font-mono px-2 py-0.5 rounded">
-                      v1.0 Docs
+                    <span className="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800 font-mono px-2 py-0.5 rounded">
+                      North Star: CR & AOV
                     </span>
                   </div>
                   <p className="text-xs text-stone-400 mt-1">
@@ -1233,148 +1233,153 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
                 </div>
               </div>
 
-              {/* Section 1: KPI Framework */}
+              {/* Section 1: North Star Metrics & KPI Framework */}
               <div className="bg-stone-950 p-5 rounded-2xl border border-stone-800 space-y-3">
                 <div className="flex items-center justify-between border-b border-stone-800 pb-2.5">
                   <h4 className="font-bold text-sm text-white flex items-center gap-2">
                     <span className="w-1.5 h-4 bg-emerald-400 rounded-full"></span>
-                    I. Khung Chỉ Số & Mục Tiêu Đo Lường Doanh Nghiệp
+                    I. Cặp Chỉ Số North Star (CR & AOV) & Tháp Đo Lường Kinh Doanh
                   </h4>
-                  <span className="text-[11px] font-mono text-stone-400">North Star: Net Revenue Per Visitor (RPV)</span>
+                  <span className="text-[11px] font-mono text-emerald-400">RPV = CR × AOV</span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
-                  <div className="bg-stone-900/60 p-3 rounded-xl border border-stone-800">
-                    <div className="text-[10px] text-stone-400 uppercase font-mono">Tỷ Lệ Chuyển Đổi (CR)</div>
-                    <div className="text-base font-bold font-mono text-emerald-400 mt-0.5">3.5% – 5.0%</div>
-                    <div className="text-[11px] text-stone-400 mt-1">Benchmark D2C thời trang</div>
+                  <div className="bg-stone-900/60 p-3 rounded-xl border border-emerald-500/30 bg-emerald-950/10">
+                    <div className="text-[10px] text-emerald-400 uppercase font-mono font-bold">★ North Star #1: CR</div>
+                    <div className="text-lg font-bold font-mono text-emerald-400 mt-0.5">3.5% – 5.0%</div>
+                    <div className="text-[11px] text-stone-400 mt-1">Tỷ lệ chuyển đổi mua hàng</div>
+                  </div>
+                  <div className="bg-stone-900/60 p-3 rounded-xl border border-cyan-500/30 bg-cyan-950/10">
+                    <div className="text-[10px] text-cyan-400 uppercase font-mono font-bold">★ North Star #2: AOV</div>
+                    <div className="text-lg font-bold font-mono text-cyan-400 mt-0.5">&gt; $85.00</div>
+                    <div className="text-[11px] text-stone-400 mt-1">Giá trị đơn hàng trung bình</div>
                   </div>
                   <div className="bg-stone-900/60 p-3 rounded-xl border border-stone-800">
-                    <div className="text-[10px] text-stone-400 uppercase font-mono">Giá Trị Đơn TB (AOV)</div>
-                    <div className="text-base font-bold font-mono text-cyan-400 mt-0.5">&gt; $85.00</div>
-                    <div className="text-[11px] text-stone-400 mt-1">Nhờ Combo 2+1 & 3+2</div>
+                    <div className="text-[10px] text-stone-400 uppercase font-mono">Quy mô: UPT</div>
+                    <div className="text-lg font-bold font-mono text-blue-400 mt-0.5">&gt; 1.8 – 2.4 quần</div>
+                    <div className="text-[11px] text-stone-400 mt-1">Giảm 25% chiếc kế tiếp & Free ship $50</div>
                   </div>
                   <div className="bg-stone-900/60 p-3 rounded-xl border border-stone-800">
-                    <div className="text-[10px] text-stone-400 uppercase font-mono">Quần Trên Đơn (UPT)</div>
-                    <div className="text-base font-bold font-mono text-blue-400 mt-0.5">&gt; 2.2 chiếc</div>
-                    <div className="text-[11px] text-stone-400 mt-1">Tối ưu chi phí fulfillment</div>
-                  </div>
-                  <div className="bg-stone-900/60 p-3 rounded-xl border border-stone-800">
-                    <div className="text-[10px] text-stone-400 uppercase font-mono">Click Ưu Đãi Upsell</div>
-                    <div className="text-base font-bold font-mono text-rose-400 mt-0.5">28% – 35%</div>
-                    <div className="text-[11px] text-stone-400 mt-1">Tăng thêm +$9.95/đơn</div>
+                    <div className="text-[10px] text-stone-400 uppercase font-mono">Gia tăng: Upsell Rate</div>
+                    <div className="text-lg font-bold font-mono text-rose-400 mt-0.5">28% – 35%</div>
+                    <div className="text-[11px] text-stone-400 mt-1">Cộng dồn +$9.95 vào AOV</div>
                   </div>
                 </div>
               </div>
 
-              {/* Section 2: Event Dictionary Matrix */}
+              {/* Section 2: Data Analyst Event Dictionary */}
               <div className="bg-stone-950 p-5 rounded-2xl border border-stone-800 space-y-3">
                 <div className="flex items-center justify-between border-b border-stone-800 pb-2.5">
                   <h4 className="font-bold text-sm text-white flex items-center gap-2">
                     <span className="w-1.5 h-4 bg-cyan-400 rounded-full"></span>
-                    II. Ma Trận Dữ Liệu Sự Kiện Đã Gắn Trên Landing Page (14 Events)
+                    II. Từ Điển Dữ Liệu Sự Kiện Phục Vụ Báo Cáo & Phân Khúc (Data Dictionary)
                   </h4>
-                  <span className="text-[11px] text-emerald-400 font-mono">4-in-1 Data Router Active</span>
+                  <span className="text-[11px] text-stone-400 font-mono">14 Behavioral Events</span>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
                       <tr className="bg-stone-900/80 text-stone-400 uppercase text-[10px] font-mono tracking-wider border-b border-stone-800">
-                        <th className="p-2.5">Tên Sự Kiện (GA4/GTM)</th>
-                        <th className="p-2.5">Hành Vi Kích Hoạt (Trigger)</th>
-                        <th className="p-2.5">Meta Pixel</th>
-                        <th className="p-2.5">TikTok Pixel</th>
-                        <th className="p-2.5">Payload Cốt Lõi</th>
+                        <th className="p-2.5">Tên Sự Kiện (Event)</th>
+                        <th className="p-2.5">Hành Vi Người Dùng (Action)</th>
+                        <th className="p-2.5">Mục Đích Phân Tích (Analytical Purpose)</th>
+                        <th className="p-2.5">Trường Dữ Liệu Phân Khúc (Dimensions)</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-stone-900 font-mono text-[11px]">
                       <tr className="hover:bg-stone-900/40">
                         <td className="p-2.5 text-emerald-400 font-bold">page_view</td>
-                        <td className="p-2.5 text-stone-300 font-sans">Tải trang lần đầu</td>
-                        <td className="p-2.5 text-blue-400">PageView</td>
-                        <td className="p-2.5 text-indigo-400">PageView</td>
-                        <td className="p-2.5 text-stone-400 font-sans">URL, Page Title, Device</td>
+                        <td className="p-2.5 text-stone-300 font-sans">Khách truy cập vào Landing Page</td>
+                        <td className="p-2.5 text-stone-400 font-sans">Đo lường dung lượng khách, tính mẫu số CR</td>
+                        <td className="p-2.5 text-cyan-300">page_title, device_type, referrer</td>
                       </tr>
                       <tr className="hover:bg-stone-900/40">
                         <td className="p-2.5 text-emerald-400 font-bold">view_item</td>
-                        <td className="p-2.5 text-stone-300 font-sans">Xem khối sản phẩm StretchActive</td>
-                        <td className="p-2.5 text-blue-400">ViewContent</td>
-                        <td className="p-2.5 text-indigo-400">ViewContent</td>
-                        <td className="p-2.5 text-stone-400 font-sans">Item ID, Style, Price ($39.95)</td>
+                        <td className="p-2.5 text-stone-300 font-sans">Xem chi tiết sản phẩm StretchActive</td>
+                        <td className="p-2.5 text-stone-400 font-sans">Tỷ lệ chuyển tiếp từ ghé thăm sang tìm hiểu</td>
+                        <td className="p-2.5 text-cyan-300">item_id, style, base_price</td>
                       </tr>
                       <tr className="hover:bg-stone-900/40">
                         <td className="p-2.5 text-emerald-400 font-bold">customize_product</td>
-                        <td className="p-2.5 text-stone-300 font-sans">Đổi màu sắc, size eo hoặc kiểu ống</td>
-                        <td className="p-2.5 text-stone-400 font-sans">CustomEvent</td>
-                        <td className="p-2.5 text-stone-400 font-sans">ClickButton</td>
-                        <td className="p-2.5 text-stone-400 font-sans">Color, Size, Style</td>
+                        <td className="p-2.5 text-stone-300 font-sans">Chọn đổi màu sắc, size eo hoặc kiểu ống</td>
+                        <td className="p-2.5 text-stone-400 font-sans">Phân tích thị hiếu mẫu mã và phân khúc khách</td>
+                        <td className="p-2.5 text-cyan-300">color, size, style (Straight/Jogger)</td>
                       </tr>
                       <tr className="hover:bg-stone-900/40">
                         <td className="p-2.5 text-emerald-400 font-bold">customize_inseam</td>
                         <td className="p-2.5 text-stone-300 font-sans">Chọn chiều dài ống quần (Inseam)</td>
-                        <td className="p-2.5 text-stone-400 font-sans">CustomEvent</td>
-                        <td className="p-2.5 text-stone-400 font-sans">ClickButton</td>
-                        <td className="p-2.5 text-stone-400 font-sans">Inseam: 28, 30, 32, 34</td>
+                        <td className="p-2.5 text-stone-400 font-sans">Đánh giá thể hình theo chiều cao khách hàng</td>
+                        <td className="p-2.5 text-cyan-300">inseam (28", 30", 32", 34")</td>
                       </tr>
                       <tr className="hover:bg-stone-900/40">
-                        <td className="p-2.5 text-emerald-400 font-bold">select_bundle</td>
-                        <td className="p-2.5 text-stone-300 font-sans">Chọn gói 1 quần, 2+1, 3+2</td>
-                        <td className="p-2.5 text-stone-400 font-sans">CustomEvent</td>
-                        <td className="p-2.5 text-stone-400 font-sans">SelectContent</td>
-                        <td className="p-2.5 text-stone-400 font-sans">Bundle ID, Saving %</td>
+                        <td className="p-2.5 text-emerald-400 font-bold">update_quantity</td>
+                        <td className="p-2.5 text-stone-300 font-sans">Tăng/giảm số lượng bằng nút +/-</td>
+                        <td className="p-2.5 text-stone-400 font-sans">Đo lường ý định mua số lượng nhiều trước khi thêm giỏ</td>
+                        <td className="p-2.5 text-cyan-300">quantity (1, 2, 3...), estimated_total</td>
                       </tr>
                       <tr className="hover:bg-stone-900/40">
                         <td className="p-2.5 text-emerald-400 font-bold">add_to_cart</td>
-                        <td className="p-2.5 text-stone-300 font-sans">Bấm nút "Add to Cart" / Mua ngay</td>
-                        <td className="p-2.5 text-blue-400">AddToCart</td>
-                        <td className="p-2.5 text-indigo-400">AddToCart</td>
-                        <td className="p-2.5 text-stone-400 font-sans">Items Array, Value, Currency</td>
+                        <td className="p-2.5 text-stone-300 font-sans">Bấm nút thêm sản phẩm vào giỏ</td>
+                        <td className="p-2.5 text-stone-400 font-sans">Đo lường Add-to-Cart Rate & quy mô giỏ</td>
+                        <td className="p-2.5 text-cyan-300">items_count, cart_value, bundle_type</td>
                       </tr>
                       <tr className="hover:bg-stone-900/40">
                         <td className="p-2.5 text-emerald-400 font-bold">upsell_impression</td>
-                        <td className="p-2.5 text-stone-300 font-sans">Hộp ưu đãi +30% xuất hiện trong giỏ</td>
-                        <td className="p-2.5 text-stone-400 font-sans">CustomEvent</td>
-                        <td className="p-2.5 text-stone-400 font-sans">ViewContent</td>
-                        <td className="p-2.5 text-stone-400 font-sans">Promo ID, Discount: 30%</td>
+                        <td className="p-2.5 text-stone-300 font-sans">Box ưu đãi bán kèm xuất hiện trong giỏ</td>
+                        <td className="p-2.5 text-stone-400 font-sans">Số lượt tiếp cận cơ hội gia tăng AOV</td>
+                        <td className="p-2.5 text-cyan-300">promo_id, discount_rate: 30%</td>
                       </tr>
                       <tr className="hover:bg-stone-900/40">
                         <td className="p-2.5 text-emerald-400 font-bold">upsell_click</td>
-                        <td className="p-2.5 text-stone-300 font-sans">Bấm nút "Select now" trong giỏ hàng</td>
-                        <td className="p-2.5 text-stone-400 font-sans">CustomEvent</td>
-                        <td className="p-2.5 text-stone-400 font-sans">ClickButton</td>
-                        <td className="p-2.5 text-stone-400 font-sans">Value: +$9.95, Target Item</td>
+                        <td className="p-2.5 text-stone-300 font-sans">Bấm "Select now" nhận ưu đãi giỏ hàng</td>
+                        <td className="p-2.5 text-stone-400 font-sans">Tính toán Upsell Take Rate & giá trị cộng dồn</td>
+                        <td className="p-2.5 text-cyan-300">applied_value: +$9.95, target_item</td>
                       </tr>
                       <tr className="hover:bg-stone-900/40">
                         <td className="p-2.5 text-emerald-400 font-bold">begin_checkout</td>
                         <td className="p-2.5 text-stone-300 font-sans">Bấm Proceed to Checkout</td>
-                        <td className="p-2.5 text-blue-400">InitiateCheckout</td>
-                        <td className="p-2.5 text-indigo-400">InitiateCheckout</td>
-                        <td className="p-2.5 text-stone-400 font-sans">Cart Value, Items Count</td>
-                      </tr>
-                      <tr className="hover:bg-stone-900/40">
-                        <td className="p-2.5 text-emerald-400 font-bold">add_shipping_info</td>
-                        <td className="p-2.5 text-stone-300 font-sans">Điền địa chỉ giao hàng</td>
-                        <td className="p-2.5 text-blue-400">AddShippingInfo</td>
-                        <td className="p-2.5 text-indigo-400">AddShippingInfo</td>
-                        <td className="p-2.5 text-stone-400 font-sans">Shipping Tier (Free/Express)</td>
+                        <td className="p-2.5 text-stone-400 font-sans">Đo lường Cart-to-Checkout Drop-off Rate</td>
+                        <td className="p-2.5 text-cyan-300">checkout_value, items_count</td>
                       </tr>
                       <tr className="hover:bg-stone-900/40">
                         <td className="p-2.5 text-emerald-400 font-bold">purchase</td>
-                        <td className="p-2.5 text-amber-400 font-sans font-bold">Hoàn tất đơn hàng thành công</td>
-                        <td className="p-2.5 text-blue-400 font-bold">Purchase</td>
-                        <td className="p-2.5 text-indigo-400 font-bold">CompletePayment</td>
-                        <td className="p-2.5 text-stone-400 font-sans">Transaction ID, Value, Currency</td>
+                        <td className="p-2.5 text-amber-400 font-sans font-bold">Hoàn tất đặt đơn hàng thành công</td>
+                        <td className="p-2.5 text-amber-300 font-sans font-bold">Chốt chặn doanh thu: tính toán CR, AOV, UPT</td>
+                        <td className="p-2.5 text-amber-300">transaction_id, total_revenue, items_list</td>
                       </tr>
                     </tbody>
                   </table>
                 </div>
               </div>
 
-              {/* GTM Setup Guidance */}
-              <div className="bg-stone-950 p-4 rounded-xl border border-stone-800">
-                <h5 className="font-bold text-xs text-white mb-1">Quy tắc tích hợp vào Google Tag Manager (GTM):</h5>
-                <p className="text-xs text-stone-400 leading-relaxed font-sans">
-                  Tạo Trigger loại <strong>Custom Event</strong> với Event Name trùng khớp (ví dụ: <code className="text-emerald-400 font-mono">add_to_cart</code>, <code className="text-emerald-400 font-mono">begin_checkout</code>, <code className="text-emerald-400 font-mono">purchase</code>). Các biến số như <code className="text-emerald-400 font-mono">ecommerce.value</code>, <code className="text-emerald-400 font-mono">ecommerce.currency</code>, <code className="text-emerald-400 font-mono">ecommerce.items</code> đã chuẩn hóa theo chuẩn GA4 Enhanced Ecommerce.
-                </p>
+              {/* Section 3: Data Analyst Segmentation & Insights */}
+              <div className="bg-stone-950 p-5 rounded-2xl border border-stone-800 space-y-3">
+                <div className="flex items-center justify-between border-b border-stone-800 pb-2.5">
+                  <h4 className="font-bold text-sm text-white flex items-center gap-2">
+                    <span className="w-1.5 h-4 bg-amber-400 rounded-full"></span>
+                    III. 3 Trọng Tâm Phân Tích Phân Khúc Dành Cho Data Analyst
+                  </h4>
+                  <span className="text-[11px] text-stone-400 font-mono">Business Decision Insights</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="bg-stone-900/70 p-3.5 rounded-xl border border-stone-800 space-y-1.5">
+                    <div className="text-xs font-bold text-emerald-400">1. Hiệu Quả Mua Nhiều Giảm Thêm</div>
+                    <p className="text-[11px] text-stone-400 leading-relaxed font-sans">
+                      So sánh tỷ trọng đơn và doanh thu giữa đơn 1 quần ($31.49), đơn 2 quần (đủ điều kiện Free Ship & giảm 25% chiếc thứ 2) và đơn 3+ quần để đo lường động lực thúc đẩy AOV.
+                    </p>
+                  </div>
+                  <div className="bg-stone-900/70 p-3.5 rounded-xl border border-stone-800 space-y-1.5">
+                    <div className="text-xs font-bold text-cyan-400">2. Độ Nhạy Bén Ưu Đãi Upsell</div>
+                    <p className="text-[11px] text-stone-400 leading-relaxed font-sans">
+                      Tính toán Upsell Take Rate và đo lường mức chênh lệch AOV giữa nhóm có chọn nâng cấp $9.95 so với nhóm từ chối ưu đãi để tối ưu hóa vị trí hiển thị.
+                    </p>
+                  </div>
+                  <div className="bg-stone-900/70 p-3.5 rounded-xl border border-stone-800 space-y-1.5">
+                    <div className="text-xs font-bold text-amber-400">3. Tương Quan Biến Thể Sản Phẩm</div>
+                    <p className="text-[11px] text-stone-400 leading-relaxed font-sans">
+                      Đối chiếu màu sắc (Đen/Ghi/Navy/Rêu) và chiều dài ống quần (Inseam 28-34") với tỷ lệ chốt đơn thành công để tối ưu kế hoạch nhập kho và bố trí giao diện.
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           )}
