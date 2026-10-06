@@ -33,6 +33,9 @@ class TrackingService {
   private userId: string;
   private sessionId: string;
   private sessionNumber: number;
+  private broadcastChannel: BroadcastChannel | null = null;
+  private syncInterval: any = null;
+  private isSyncing: boolean = false;
 
   constructor() {
     this.config = this.loadConfig();
@@ -42,6 +45,8 @@ class TrackingService {
     this.sessionNumber = identity.sessionNumber;
     this.events = this.loadEvents();
     this.initializeScripts();
+    this.initializeBroadcast();
+    this.initializeServerSync();
   }
 
   private initIdentity(): { userId: string; sessionId: string; sessionNumber: number } {
@@ -63,6 +68,103 @@ class TrackingService {
     const sid = `sess_${randSess}_${timeCode}`;
 
     return { userId: uid, sessionId: sid, sessionNumber: sNum };
+  }
+
+  private initializeBroadcast() {
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      try {
+        this.broadcastChannel = new BroadcastChannel('stretchactive_tracking_channel');
+        this.broadcastChannel.onmessage = (ev) => {
+          if (ev.data?.type === 'NEW_EVENT' && ev.data?.event) {
+            const incoming = ev.data.event;
+            if (!this.events.some((e) => e.id === incoming.id)) {
+              this.events.unshift(incoming);
+              this.notify();
+            }
+          } else if (ev.data?.type === 'CLEAR_EVENTS') {
+            this.events = [];
+            this.notify();
+          } else if (ev.data?.type === 'SYNC_EVENTS' && Array.isArray(ev.data?.events)) {
+            this.mergeEvents(ev.data.events);
+          }
+        };
+      } catch (err) {
+        console.warn('BroadcastChannel error', err);
+      }
+    }
+  }
+
+  private initializeServerSync() {
+    if (typeof window === 'undefined') return;
+
+    // Initial server sync to fetch all events accumulated across all users
+    this.syncWithServer();
+
+    // Poll every 3s to live stream events from other people who visit
+    this.syncInterval = setInterval(() => {
+      this.fetchLatestServerEvents();
+    }, 3000);
+  }
+
+  public async syncWithServer() {
+    if (this.isSyncing || typeof window === 'undefined') return;
+    this.isSyncing = true;
+    try {
+      const res = await fetch('/api/tracking/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ events: this.events }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.events)) {
+          this.mergeEvents(data.events);
+        }
+      }
+    } catch {
+      // Offline fallback: keep local events
+    } finally {
+      this.isSyncing = false;
+    }
+  }
+
+  public async fetchLatestServerEvents() {
+    if (typeof window === 'undefined') return;
+    try {
+      const res = await fetch('/api/tracking/events');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.events)) {
+          this.mergeEvents(data.events);
+        }
+      }
+    } catch {
+      // Offline fallback
+    }
+  }
+
+  private mergeEvents(serverEvents: TrackingEventRecord[]) {
+    let hasNew = false;
+    const map = new Map<string, TrackingEventRecord>();
+
+    for (const e of this.events) {
+      if (e && e.id) map.set(e.id, e);
+    }
+
+    for (const se of serverEvents) {
+      if (se && se.id && !map.has(se.id)) {
+        map.set(se.id, se);
+        hasNew = true;
+      }
+    }
+
+    if (hasNew) {
+      this.events = Array.from(map.values());
+      try {
+        localStorage.setItem(STORAGE_KEY_EVENTS, JSON.stringify(this.events.slice(0, 10000)));
+      } catch {}
+      this.notify();
+    }
   }
 
   public getUserId(): string {
@@ -107,13 +209,30 @@ class TrackingService {
     return [...this.events];
   }
 
-  public clearEvents() {
+  public async clearEvents() {
     this.events = [];
     try {
       localStorage.removeItem(STORAGE_KEY_EVENTS);
     } catch (e) {
       console.warn('Failed clearing events from storage', e);
     }
+
+    // Broadcast to other open tabs
+    if (this.broadcastChannel) {
+      try {
+        this.broadcastChannel.postMessage({ type: 'CLEAR_EVENTS' });
+      } catch {}
+    }
+
+    // Persistently delete on server only when user actively triggers it
+    if (typeof window !== 'undefined') {
+      try {
+        await fetch('/api/tracking/events', { method: 'DELETE' });
+      } catch (err) {
+        console.warn('Failed clearing events on server', err);
+      }
+    }
+
     this.notify();
   }
 
@@ -139,19 +258,41 @@ class TrackingService {
   private loadEvents(): TrackingEventRecord[] {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_EVENTS);
-      if (saved) return JSON.parse(saved).slice(0, 300);
+      if (saved) return JSON.parse(saved);
     } catch (e) {}
     return [];
   }
 
   private recordEvent(record: TrackingEventRecord) {
-    this.events.unshift(record);
-    if (this.events.length > 300) {
-      this.events = this.events.slice(0, 300);
+    if (!this.events.some((e) => e.id === record.id)) {
+      this.events.unshift(record);
+    }
+    if (this.events.length > 50000) {
+      this.events = this.events.slice(0, 50000);
     }
     try {
-      localStorage.setItem(STORAGE_KEY_EVENTS, JSON.stringify(this.events.slice(0, 300)));
+      localStorage.setItem(STORAGE_KEY_EVENTS, JSON.stringify(this.events.slice(0, 10000)));
     } catch (e) {}
+
+    // Broadcast instantly to all tabs
+    if (this.broadcastChannel) {
+      try {
+        this.broadcastChannel.postMessage({ type: 'NEW_EVENT', event: record });
+      } catch {}
+    }
+
+    // Send to server API to save on disk permanently for all users
+    if (typeof window !== 'undefined') {
+      try {
+        fetch('/api/tracking/events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(record),
+          keepalive: true,
+        }).catch(() => {});
+      } catch {}
+    }
+
     this.notify();
   }
 

@@ -10,9 +10,10 @@
 ### 1. Cặp Chỉ Số North Star (North Star Metrics)
 Dự án xác định **cặp chỉ số song hành North Star** làm kim chỉ nam đo lường hiệu quả kinh doanh của toàn bộ Landing Page:
 
+$$\text{Doanh Thu Kỳ Vọng / Lượt Ghé Thăm (RPV)} = \mathbf{CR} \times \mathbf{AOV}$$
 
 * **CR (Conversion Rate - Tỷ lệ chuyển đổi):** Đo lường năng lực thuyết phục của Landing Page trong việc biến một lượt ghé thăm (Visitor) thành người mua hàng thực tế (Buyer).
-* **AOV (Average Order Value - Giá trị đơn hàng trung bình):** Đo lường quy mô giá trị kinh tế trung bình của mỗi đơn hàng, phản ánh hiệu quả của chính sách kích cầu mua nhiều quần (*Buy More Save More: Mua chiếc tiếp theo giảm thêm 25%*) 
+* **AOV (Average Order Value - Giá trị đơn hàng trung bình):** Đo lường quy mô giá trị kinh tế trung bình của mỗi đơn hàng, phản ánh hiệu quả của chính sách kích cầu mua nhiều quần (*Buy More Save More: Mua chiếc tiếp theo giảm thêm 25% & Miễn phí vận chuyển từ $50*) kết hợp cùng ưu đãi nâng cấp tính năng trong giỏ hàng (*In-Cart Upsell +$9.95*).
 
 ---
 
@@ -102,12 +103,18 @@ $$\text{Drop-off Rate}_{(k \to k+1)} = \frac{\text{Users}_k - \text{Users}_{k+1}
 Dữ liệu tracking được tổ chức để Data Analyst có thể trả lời trực tiếp 3 bài toán kinh doanh trọng điểm:
 
 ### 1. Phân Tích Hiệu Quả Mua Nhiều Giảm Giá (Buy More Save More / Basket Size Analysis)
-* **Câu hỏi phân tích:** *Chính sách giảm thêm 25% cho sản phẩm tiếp theo có thực sự kéo tăng UPT và AOV không?*
+* **Câu hỏi phân tích:** *Chính sách giảm thêm 25% cho sản phẩm tiếp theo và Free Ship $50 có thực sự kéo tăng UPT và AOV không?*
 * **Chỉ số đo lường:** Tỷ trọng đơn hàng (% share of orders) và Doanh thu trung bình theo quy mô giỏ:
   * Đơn hàng mua 1 chiếc ($31.49 + ship)
   * Đơn hàng mua 2 chiếc (Hưởng giảm 25% chiếc thứ hai + Free Ship)
   * Đơn hàng mua 3+ chiếc
 * **Ý nghĩa:** Nếu tỷ lệ đơn hàng mua $\ge 2$ chiếc vượt mốc 45%, chính sách chiết khấu số lượng đang vận hành hiệu quả.
+
+### 2. Phân Tích Độ Nhạy Bén Ưu Đãi Bán Thêm (Upsell Elasticity)
+* **Câu hỏi phân tích:** *Ưu đãi nâng cấp chống thấm $9.95 (+30%) giúp tăng trưởng AOV bao nhiêu % so với đơn hàng thuần?*
+* **Chỉ số đo lường:**
+  * Upsell Take Rate = `upsell_click` / `upsell_impression`.
+  * So sánh AOV giữa nhóm có chọn Upsell ($AOV_{\text{with upsell}}$) và nhóm không chọn Upsell ($AOV_{\text{no upsell}}$).
 
 ### 3. Phân Tích Hành Vi Chọn Thuộc Tính Sản Phẩm (Variant Preference)
 * **Câu hỏi phân tích:** *Màu sắc, kích cỡ và chiều dài ống quần nào được chọn nhiều nhất và có tỷ lệ hoàn tất đơn cao nhất?*

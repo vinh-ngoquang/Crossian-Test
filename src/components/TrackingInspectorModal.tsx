@@ -209,12 +209,10 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
   useEffect(() => {
     const unsubscribe = tracker.subscribe((updatedEvents) => {
       setEvents(updatedEvents);
-      if (!selectedEvent && updatedEvents.length > 0) {
-        setSelectedEvent(updatedEvents[0]);
-      }
+      setSelectedEvent((prev) => prev || (updatedEvents.length > 0 ? updatedEvents[0] : null));
     });
     return () => unsubscribe();
-  }, [selectedEvent]);
+  }, []);
 
   if (!isOpen) return null;
 
@@ -302,6 +300,10 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
                   4 Pixels Active (GTM · GA4 · Meta · TikTok)
                 </span>
+                <span className="inline-flex items-center gap-1 text-[11px] font-mono text-cyan-400 bg-cyan-950/60 border border-cyan-800/60 px-2 py-0.5 rounded-md" title="Dữ liệu của tất cả mọi người gửi link đều được lưu trữ vĩnh viễn">
+                  <Database className="w-3 h-3" />
+                  Shared Data Active
+                </span>
               </div>
               <div className="flex items-center gap-2 text-xs text-stone-400 mt-0.5 font-mono">
                 <span>User: <strong className="text-emerald-400">{tracker.getUserId()}</strong></span>
@@ -325,11 +327,17 @@ export const TrackingInspectorModal: React.FC<Props> = ({ isOpen, onClose }) => 
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => {
-                tracker.clearEvents();
-                setEvents([]);
+              onClick={async () => {
+                if (
+                  window.confirm(
+                    '⚠️ XÁC NHẬN XÓA DỮ LIỆU:\n\nBạn có chắc chắn muốn xóa toàn bộ dữ liệu tracking không?\nDữ liệu của tất cả người dùng trên hệ thống sẽ bị xóa vĩnh viễn và không thể khôi phục.'
+                  )
+                ) {
+                  await tracker.clearEvents();
+                  setEvents([]);
+                }
               }}
-              title="Xóa toàn bộ dữ liệu tracking"
+              title="Chỉ xóa khi bạn chủ động xác nhận xóa"
               className="px-2.5 py-1.5 text-xs text-stone-400 hover:text-rose-400 hover:bg-stone-800/80 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer border border-stone-800"
             >
               <Trash2 className="w-3.5 h-3.5" />
